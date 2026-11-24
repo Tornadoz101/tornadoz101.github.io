@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Tornadoz101 Radar</title>
+  <title>Tornadoz101's Radar</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
@@ -13,8 +13,8 @@
       height: 100%;
       width: 100%;
       margin: 0;
-      background-color: #111;
-      color: #f5f5f5;
+      background-color: #ffffff;
+      color: #111111;
       font-family: sans-serif;
     }
 
@@ -24,32 +24,87 @@
       width: 100vw;
     }
 
-    /* Full-height left panel (empty slots, no labels) */
-    .left-menu {
-      width: 240px;
+    /* LEFT COLUMN */
+    .left-column {
+      width: 245px;
       height: 100%;
-      background-color: #1c1c1c;
-      padding: 12px;
-      border-right: 1px solid #333;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      background-color: #ffffff;
+      border-right: 4px solid #000000;
+    }
+
+    .brand-box {
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 19px;
+      font-weight: 800;
+      border-bottom: 4px solid #000000;
+      padding: 0 10px;
+      text-align: center;
+    }
+
+    .left-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 14px 8px 14px 4px;
       overflow-y: auto;
     }
 
-    .panel-slot {
-      background-color: #242424;
-      border: 1px dashed #3a3a3a;
-      border-radius: 6px;
-      min-height: 64px;
+    /* Empty containers where RADAR NAME and Site Angle Levels will go */
+    .empty-slots {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      padding: 10px 6px;
     }
 
-    .panel-slot.tall {
-      flex: 1;
-      min-height: 140px;
+    .radar-slot {
+      min-height: 44px;
     }
 
-    /* Right column: Top Bar + Map */
+    .angle-slot {
+      min-height: 70px;
+    }
+
+    /* Bottom-left radar product buttons */
+    .product-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .prod-btn {
+      width: 100%;
+      padding: 8px 10px;
+      background-color: #ffffff;
+      color: #111111;
+      font-size: 16px;
+      font-weight: 800;
+      border-radius: 0;
+      border-width: 3px;
+      border-style: solid;
+      cursor: pointer;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+
+    .prod-reflectivity { border-color: #1d4ed8; }
+    .prod-reflectivity.active { background-color: #1d4ed8; color: #ffffff; }
+
+    .prod-velocity { border-color: #22c55e; }
+    .prod-velocity.active { background-color: #22c55e; color: #052e16; }
+
+    .prod-spectrum { border-color: #6b7280; }
+    .prod-spectrum.active { background-color: #6b7280; color: #ffffff; }
+
+    .prod-cc { border-color: #f43f5e; }
+    .prod-cc.active { background-color: #f43f5e; color: #ffffff; }
+
+    /* RIGHT COLUMN */
     .right-column {
       flex: 1;
       display: flex;
@@ -57,143 +112,265 @@
       height: 100%;
     }
 
-    .top-menu {
-      min-height: 56px;
-      background-color: #1c1c1c;
-      padding: 8px 14px;
-      border-bottom: 1px solid #333;
+    /* Top bar matching your 2-row pill grid + Settings */
+    .top-bar {
+      min-height: 68px;
+      background: linear-gradient(to right, #ffffff 75%, #e5e7eb 100%);
+      border-bottom: 4px solid #000000;
+      padding: 6px 14px;
       display: flex;
       align-items: center;
+      gap: 18px;
       flex-wrap: wrap;
-      gap: 10px;
     }
 
-    /* Buttons: Light blue = unselected */
-    .top-btn {
-      padding: 8px 14px;
-      border: none;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 600;
+    .pill-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(112px, auto));
+      grid-template-rows: repeat(2, auto);
+      gap: 5px 10px;
+    }
+
+    /* Pill buttons: light blue border = unselected, darker blue = selected */
+    .pill-btn {
+      padding: 4px 14px;
+      border-radius: 999px;
+      border: 2px solid #7cc4fa;
+      background-color: #ffffff;
+      color: #111111;
+      font-size: 11px;
+      font-weight: 800;
       cursor: pointer;
-      background-color: #7cc4fa; /* Light blue = unselected */
-      color: #0b192c;
-      transition: background-color 0.15s ease, color 0.15s ease;
+      text-align: center;
+      white-space: nowrap;
+      transition: all 0.15s ease;
     }
 
-    .top-btn.active {
-      background-color: #1d4ed8; /* Darker blue = selected */
+    .pill-btn.active {
+      border-color: #1d4ed8;
+      background-color: #1d4ed8;
       color: #ffffff;
-      box-shadow: inset 0 0 0 2px #93c5fd;
+    }
+
+    .settings-btn {
+      background: none;
+      border: none;
+      color: #9ca3af;
+      font-size: 24px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+    }
+
+    .settings-btn:hover,
+    .settings-btn.active {
+      color: #374151;
+    }
+
+    /* Map container */
+    .map-wrap {
+      position: relative;
+      flex: 1;
+      width: 100%;
     }
 
     #map {
-      flex: 1;
+      height: 100%;
       width: 100%;
+    }
+
+    /* Empty Settings popup box when Settings is clicked */
+    .settings-modal {
+      display: none;
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 240px;
+      min-height: 160px;
+      background-color: #ffffff;
+      border: 3px solid #000000;
+      z-index: 1000;
+      padding: 12px;
+    }
+
+    .settings-modal.open {
+      display: block;
     }
   </style>
 </head>
 <body>
   <div class="layout">
-    <!-- LEFT SIDEBAR: Empty positioned containers (no labels) -->
-    <aside class="left-menu">
-      <div class="panel-slot" id="slot-site-info"></div>
-      <div class="panel-slot" id="slot-products"></div>
-      <div class="panel-slot" id="slot-tilts"></div>
-      <div class="panel-slot tall" id="slot-details"></div>
+    <!-- LEFT SIDEBAR -->
+    <aside class="left-column">
+      <div class="brand-box">Tornadoz101’s Radar</div>
+
+      <div class="left-body">
+        <!-- Empty positioned slots (no labels) -->
+        <div class="empty-slots">
+          <div class="radar-slot" id="slot-radar-name"></div>
+          <div class="angle-slot" id="slot-site-angles"></div>
+        </div>
+
+        <!-- Bottom-left product buttons -->
+        <div class="product-buttons">
+          <button type="button" class="prod-btn prod-reflectivity active" data-prod="ref">Reflectivity</button>
+          <button type="button" class="prod-btn prod-velocity" data-prod="vel">Velocity</button>
+          <button type="button" class="prod-btn prod-spectrum" data-prod="sw">Spectrum Width</button>
+          <button type="button" class="prod-btn prod-cc" data-prod="cc">CC</button>
+        </div>
+      </div>
     </aside>
 
-    <!-- RIGHT SIDE: TOP BUTTON BAR + MAP -->
+    <!-- RIGHT SIDE: TOP BAR + MAP -->
     <div class="right-column">
-      <header class="top-menu">
-        <button type="button" class="top-btn active" id="btnWeather">Weather Version</button>
-        <button type="button" class="top-btn" id="btnAll">All Version</button>
-        <button type="button" class="top-btn" id="btnOutlook">Outlook</button>
-        <button type="button" class="top-btn" id="btnMD">Mesoscale Discussions</button>
+      <header class="top-bar">
+        <div class="pill-grid">
+          <!-- Row 1 -->
+          <button type="button" class="pill-btn" id="btnSiteNames">Site Names</button>
+          <button type="button" class="pill-btn" id="btnAllVersion">All Version</button>
+          <button type="button" class="pill-btn" id="btnReports">Reports</button>
+          <button type="button" class="pill-btn" id="btnOutlook">Outlook</button>
+
+          <!-- Row 2 -->
+          <button type="button" class="pill-btn active" id="btnWeatherVersion">Weather Version</button>
+          <button type="button" class="pill-btn active" id="btnWarnings">Warnings</button>
+          <button type="button" class="pill-btn" id="btnConfirmed">Confirmed</button>
+          <button type="button" class="pill-btn" id="btnMD">MD</button>
+        </div>
+
+        <button type="button" class="settings-btn" id="btnSettings">Settings ⚙️</button>
       </header>
 
-      <div id="map"></div>
+      <div class="map-wrap">
+        <div id="map"></div>
+        <div class="settings-modal" id="settingsModal"></div>
+      </div>
     </div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // Centered just south of El Reno, OK so all sample polygons are visible
-    const map = L.map('map').setView([35.35, -97.80], 10);
+    // Centered just south of El Reno, OK so all sample polygons show in a row
+    const map = L.map('map').setView([35.36, -97.78], 10);
 
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19
     }).addTo(map);
 
-    // Layer groups for filtering
-    const weatherWarningsLayer = L.layerGroup().addTo(map);
-    const nonWeatherWarningsLayer = L.layerGroup(); // Hidden initially because Weather Version starts active
-
-    // Helper to build a rectangle polygon [southLat, westLng, northLat, eastLng]
     function makeBox(s, w, n, e, color, label) {
       return L.rectangle([[s, w], [n, e]], {
         color: color,
         fillColor: color,
-        fillOpacity: 0.45,
+        fillOpacity: 0.5,
         weight: 2
       }).bindPopup(label);
     }
 
-    // --- SAMPLE WARNINGS IN A ROW SOUTH OF EL RENO (lat ~35.30 to 35.42) ---
-    // Column 1: 3 Thunderstorm warning levels stacked vertically (yellow -> dark yellow)
-    makeBox(35.385, -98.02, 35.420, -97.96, '#ffea00', 'Severe Thunderstorm Warning (Base)').addTo(weatherWarningsLayer);
-    makeBox(35.345, -98.02, 35.380, -97.96, '#d4ac0d', 'Severe Thunderstorm Warning (Considerable)').addTo(weatherWarningsLayer);
-    makeBox(35.305, -98.02, 35.340, -97.96, '#8a6d00', 'Severe Thunderstorm Warning (Destructive)').addTo(weatherWarningsLayer);
+    // Sample warning items tagged by category
+    const sampleWarnings = [
+      // Column 1: Thunderstorm warnings stacked vertically (yellow -> dark yellow)
+      { type: 'weather', confirmed: false, layer: makeBox(35.390, -98.02, 35.425, -97.96, '#ffea00', 'Severe Thunderstorm Warning (Base)') },
+      { type: 'weather', confirmed: false, layer: makeBox(35.350, -98.02, 35.385, -97.96, '#d4ac0d', 'Severe Thunderstorm Warning (Considerable)') },
+      { type: 'weather', confirmed: false, layer: makeBox(35.310, -98.02, 35.345, -97.96, '#8a6d00', 'Severe Thunderstorm Warning (Destructive)') },
 
-    // Column 2: Tornado Warning (Red)
-    makeBox(35.305, -97.95, 35.420, -97.89, '#e60000', 'Tornado Warning').addTo(weatherWarningsLayer);
+      // Column 2: Tornado Warning (Red)
+      { type: 'weather', confirmed: false, layer: makeBox(35.310, -97.95, 35.425, -97.89, '#e60000', 'Tornado Warning') },
 
-    // Column 3: Tornado PDS (Maroon)
-    makeBox(35.305, -97.88, 35.420, -97.82, '#800000', 'Tornado Warning (PDS)').addTo(weatherWarningsLayer);
+      // Column 3: Tornado PDS (Maroon)
+      { type: 'weather', confirmed: true, layer: makeBox(35.310, -97.88, 35.425, -97.82, '#800000', 'Tornado Warning (PDS)') },
 
-    // Column 4: Tornado Emergency (Pinkish Purple)
-    makeBox(35.305, -97.81, 35.420, -97.75, '#d946ef', 'Tornado Emergency').addTo(weatherWarningsLayer);
+      // Column 4: Tornado Emergency (Pinkish Purple)
+      { type: 'weather', confirmed: true, layer: makeBox(35.310, -97.81, 35.425, -97.75, '#d946ef', 'Tornado Emergency') },
 
-    // Column 5: Flood Warning (Green)
-    makeBox(35.305, -97.74, 35.420, -97.68, '#16a34a', 'Flood Warning').addTo(weatherWarningsLayer);
+      // Column 5: Flood Warning (Green)
+      { type: 'weather', confirmed: false, layer: makeBox(35.310, -97.74, 35.425, -97.68, '#16a34a', 'Flood Warning') },
 
-    // Column 6: Snow Warning (Bright Pink) - All Version only
-    makeBox(35.305, -97.67, 35.420, -97.61, '#ff4da6', 'Snow / Winter Storm Warning').addTo(nonWeatherWarningsLayer);
+      // Column 6: Snow Warning (Bright Pink) - All Version only
+      { type: 'other', confirmed: false, layer: makeBox(35.310, -97.67, 35.425, -97.61, '#ff4da6', 'Snow Warning') },
 
-    // Column 7: Wind / Gale Warning (Bright Purple) - All Version only
-    makeBox(35.305, -97.60, 35.420, -97.54, '#a855f7', 'Wind / Gale Warning').addTo(nonWeatherWarningsLayer);
+      // Column 7: Wind / Gale Warning (Bright Purple) - All Version only
+      { type: 'other', confirmed: false, layer: makeBox(35.310, -97.60, 35.425, -97.54, '#a855f7', 'Wind / Gale Warning') }
+    ];
 
-    // --- BUTTON LOGIC ---
-    const btnWeather = document.getElementById('btnWeather');
-    const btnAll = document.getElementById('btnAll');
-    const btnOutlook = document.getElementById('btnOutlook');
-    const btnMD = document.getElementById('btnMD');
+    let mode = 'weather'; // 'weather' or 'all'
+    let warningsEnabled = true;
+    let confirmedOnly = false;
+
+    function updateWarningsDisplay() {
+      sampleWarnings.forEach(item => {
+        const modeMatch = (mode === 'all') || (item.type === 'weather');
+        const confirmedMatch = (!confirmedOnly) || item.confirmed;
+        const shouldShow = warningsEnabled && modeMatch && confirmedMatch;
+
+        if (shouldShow && !map.hasLayer(item.layer)) {
+          item.layer.addTo(map);
+        } else if (!shouldShow && map.hasLayer(item.layer)) {
+          map.removeLayer(item.layer);
+        }
+      });
+    }
+
+    updateWarningsDisplay();
 
     // Mutually exclusive: Weather Version vs All Version
-    btnWeather.addEventListener('click', () => {
-      btnWeather.classList.add('active');
-      btnAll.classList.remove('active');
-      if (map.hasLayer(nonWeatherWarningsLayer)) {
-        map.removeLayer(nonWeatherWarningsLayer);
-      }
+    const btnWeatherVersion = document.getElementById('btnWeatherVersion');
+    const btnAllVersion = document.getElementById('btnAllVersion');
+
+    btnWeatherVersion.addEventListener('click', () => {
+      mode = 'weather';
+      btnWeatherVersion.classList.add('active');
+      btnAllVersion.classList.remove('active');
+      updateWarningsDisplay();
     });
 
-    btnAll.addEventListener('click', () => {
-      btnAll.classList.add('active');
-      btnWeather.classList.remove('active');
-      if (!map.hasLayer(nonWeatherWarningsLayer)) {
-        nonWeatherWarningsLayer.addTo(map);
-      }
+    btnAllVersion.addEventListener('click', () => {
+      mode = 'all';
+      btnAllVersion.classList.add('active');
+      btnWeatherVersion.classList.remove('active');
+      updateWarningsDisplay();
     });
 
-    // Independent toggles for Outlook & Mesoscale Discussions
-    btnOutlook.addEventListener('click', () => {
-      btnOutlook.classList.toggle('active');
+    // Warnings toggle
+    const btnWarnings = document.getElementById('btnWarnings');
+    btnWarnings.addEventListener('click', () => {
+      warningsEnabled = !warningsEnabled;
+      btnWarnings.classList.toggle('active', warningsEnabled);
+      updateWarningsDisplay();
     });
 
-    btnMD.addEventListener('click', () => {
-      btnMD.classList.toggle('active');
+    // Confirmed toggle
+    const btnConfirmed = document.getElementById('btnConfirmed');
+    btnConfirmed.addEventListener('click', () => {
+      confirmedOnly = !confirmedOnly;
+      btnConfirmed.classList.toggle('active', confirmedOnly);
+      updateWarningsDisplay();
+    });
+
+    // Independent pill toggles
+    ['btnSiteNames', 'btnReports', 'btnOutlook', 'btnMD'].forEach(id => {
+      const btn = document.getElementById(id);
+      btn.addEventListener('click', () => btn.classList.toggle('active'));
+    });
+
+    // Left product buttons (one active at a time)
+    const prodButtons = document.querySelectorAll('.prod-btn');
+    prodButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        prodButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // Settings button toggle
+    const btnSettings = document.getElementById('btnSettings');
+    const settingsModal = document.getElementById('settingsModal');
+    btnSettings.addEventListener('click', () => {
+      btnSettings.classList.toggle('active');
+      settingsModal.classList.toggle('open');
     });
   </script>
 </body>
