@@ -5,6 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
+    :root {
+      --panel-bg: #1e293b;
+      --panel-text: #ffffff;
+      --muted-text: #cbd5e1;
+      --border-color: #000000;
+      --btn-bg: #0f172a;
+      --btn-text: #ffffff;
+      --top-bar-bg: linear-gradient(to right, #1e293b 75%, #334155 100%);
+      --input-bg: #0f172a;
+      --input-text: #ffffff;
+      --input-border: #64748b;
+      --settings-icon: #cbd5e1;
+      --settings-hover: #ffffff;
+      --popup-bg: #1e293b;
+      --popup-text: #ffffff;
+    }
+
+    body.light-mode {
+      --panel-bg: #ffffff;
+      --panel-text: #111111;
+      --muted-text: #6b7280;
+      --border-color: #000000;
+      --btn-bg: #ffffff;
+      --btn-text: #111111;
+      --top-bar-bg: linear-gradient(to right, #ffffff 75%, #e5e7eb 100%);
+      --input-bg: #ffffff;
+      --input-text: #111111;
+      --input-border: #9ca3af;
+      --settings-icon: #9ca3af;
+      --settings-hover: #374151;
+      --popup-bg: #ffffff;
+      --popup-text: #111111;
+    }
+
     * {
       box-sizing: border-box;
     }
@@ -14,8 +48,8 @@
       width: 100%;
       margin: 0;
       overflow: hidden;
-      background-color: #ffffff;
-      color: #111111;
+      background-color: var(--panel-bg);
+      color: var(--panel-text);
       font-family: sans-serif;
     }
 
@@ -33,8 +67,9 @@
       height: 100%;
       display: flex;
       flex-direction: column;
-      background-color: #ffffff;
-      border-right: 3px solid #000000;
+      background-color: var(--panel-bg);
+      color: var(--panel-text);
+      border-right: 3px solid var(--border-color);
       flex-shrink: 0;
     }
 
@@ -44,7 +79,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      border-bottom: 3px solid #000000;
+      border-bottom: 3px solid var(--border-color);
       padding: 2px 8px;
       text-align: center;
       flex-shrink: 0;
@@ -54,12 +89,13 @@
       font-size: 16px;
       font-weight: 800;
       line-height: 1.1;
+      color: var(--panel-text);
     }
 
     .brand-version {
       font-size: 11px;
       font-weight: 700;
-      color: #6b7280;
+      color: var(--muted-text);
       margin-top: 2px;
       line-height: 1;
     }
@@ -97,8 +133,8 @@
     .prod-btn {
       width: 100%;
       padding: 6px 8px;
-      background-color: #ffffff;
-      color: #111111;
+      background-color: var(--btn-bg);
+      color: var(--btn-text);
       font-size: 14px;
       font-weight: 800;
       border-radius: 0;
@@ -131,8 +167,9 @@
 
     .top-bar {
       min-height: 56px;
-      background: linear-gradient(to right, #ffffff 75%, #e5e7eb 100%);
-      border-bottom: 3px solid #000000;
+      background: var(--top-bar-bg);
+      color: var(--panel-text);
+      border-bottom: 3px solid var(--border-color);
       padding: 4px 10px;
       display: flex;
       align-items: center;
@@ -152,8 +189,8 @@
       padding: 3px 10px;
       border-radius: 999px;
       border: 2px solid #7cc4fa;
-      background-color: #ffffff;
-      color: #111111;
+      background-color: var(--btn-bg);
+      color: var(--btn-text);
       font-size: 11px;
       font-weight: 800;
       cursor: pointer;
@@ -182,7 +219,7 @@
       font-size: 12px;
       font-weight: 800;
       font-variant-numeric: tabular-nums;
-      color: #111827;
+      color: var(--panel-text);
       letter-spacing: 0.4px;
       line-height: 1;
     }
@@ -200,12 +237,12 @@
       padding: 2px 7px;
       font-size: 11px;
       font-weight: 600;
-      border: 2px solid #9ca3af;
+      border: 2px solid var(--input-border);
       border-right: none;
       border-radius: 999px 0 0 999px;
       outline: none;
-      background-color: #ffffff;
-      color: #111111;
+      background-color: var(--input-bg);
+      color: var(--input-text);
     }
 
     .search-input:focus {
@@ -235,7 +272,7 @@
     .settings-btn {
       background: none;
       border: none;
-      color: #9ca3af;
+      color: var(--settings-icon);
       font-size: 18px;
       font-weight: 800;
       cursor: pointer;
@@ -248,7 +285,7 @@
 
     .settings-btn:hover,
     .settings-btn.active {
-      color: #374151;
+      color: var(--settings-hover);
     }
 
     .map-wrap {
@@ -274,8 +311,9 @@
       right: 10px;
       width: 245px;
       min-height: 150px;
-      background-color: #ffffff;
-      border: 3px solid #000000;
+      background-color: var(--popup-bg);
+      color: var(--popup-text);
+      border: 3px solid var(--border-color);
       z-index: 1000;
       padding: 12px;
       font-size: 12px;
@@ -288,28 +326,43 @@
     .settings-title {
       font-size: 13px;
       font-weight: 800;
-      margin-bottom: 8px;
+      margin-top: 10px;
+      margin-bottom: 6px;
     }
 
-    .map-style-options {
+    .settings-title:first-child {
+      margin-top: 0;
+    }
+
+    .option-group {
       display: flex;
       flex-direction: column;
       gap: 6px;
     }
 
-    .style-opt-btn {
+    .option-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .opt-btn {
+      flex: 1;
       width: 100%;
       padding: 7px 9px;
-      border: 2px solid #9ca3af;
-      background-color: #ffffff;
-      color: #111111;
+      border: 2px solid var(--input-border);
+      background-color: var(--btn-bg);
+      color: var(--btn-text);
       font-size: 12px;
       font-weight: 700;
       text-align: left;
       cursor: pointer;
     }
 
-    .style-opt-btn.active {
+    .option-row .opt-btn {
+      text-align: center;
+    }
+
+    .opt-btn.active {
       border-color: #1d4ed8;
       background-color: #1d4ed8;
       color: #ffffff;
@@ -369,10 +422,16 @@
       <div class="map-wrap">
         <div id="map"></div>
         <div class="popup-panel" id="settingsModal">
+          <div class="settings-title">Theme</div>
+          <div class="option-row">
+            <button type="button" class="opt-btn active" id="themeDark">Dark</button>
+            <button type="button" class="opt-btn" id="themeLight">Light</button>
+          </div>
+
           <div class="settings-title">Map Style</div>
-          <div class="map-style-options">
-            <button type="button" class="style-opt-btn active" id="styleDarkMinimal">Dark Minimal (Default)</button>
-            <button type="button" class="style-opt-btn" id="styleDetailedOSM">Detailed Street (OSM)</button>
+          <div class="option-group">
+            <button type="button" class="opt-btn active" id="styleDarkMinimal">Dark Minimal (Default)</button>
+            <button type="button" class="opt-btn" id="styleDetailedOSM">Detailed Street (OSM)</button>
           </div>
         </div>
       </div>
@@ -381,198 +440,9 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    function updateUTCClock() {
-      const clockEl = document.getElementById('utcClock');
-      if (!clockEl) return;
-      const now = new Date();
-      const hh = String(now.getUTCHours()).padStart(2, '0');
-      const mm = String(now.getUTCMinutes()).padStart(2, '0');
-      const ss = String(now.getUTCSeconds()).padStart(2, '0');
-      clockEl.textContent = hh + ':' + mm + ':' + ss + ' UTC';
-    }
-    updateUTCClock();
-    setInterval(updateUTCClock, 1000);
+    function applyThemeMode(themeName) {
+      const isLight = themeName === 'light';
+      document.body.classList.toggle('light-mode', isLight);
 
-    const btnSettings = document.getElementById('btnSettings');
-    const settingsModal = document.getElementById('settingsModal');
-    if (btnSettings && settingsModal) {
-      btnSettings.addEventListener('click', function () {
-        btnSettings.classList.toggle('active');
-        settingsModal.classList.toggle('open');
-      });
-    }
-
-    let mode = 'weather';
-    let warningsEnabled = true;
-    let confirmedOnly = false;
-    let map = null;
-    let sampleWarnings = [];
-    let darkMinimalLayer = null;
-    let detailedOSMLayer = null;
-
-    function makeBox(s, w, n, e, color, label) {
-      return L.rectangle([[s, w], [n, e]], {
-        color: color,
-        fillColor: color,
-        fillOpacity: 0.5,
-        weight: 2
-      }).bindPopup(label);
-    }
-
-    function updateWarningsDisplay() {
-      if (!map) return;
-      sampleWarnings.forEach(function (item) {
-        const modeMatch = (mode === 'all') || (item.type === 'weather');
-        const confirmedMatch = (!confirmedOnly) || item.confirmed;
-        const shouldShow = warningsEnabled && modeMatch && confirmedMatch;
-
-        if (shouldShow && !map.hasLayer(item.layer)) {
-          item.layer.addTo(map);
-        } else if (!shouldShow && map.hasLayer(item.layer)) {
-          map.removeLayer(item.layer);
-        }
-      });
-    }
-
-    function applyMapStyle(styleName) {
-      if (!map || !darkMinimalLayer || !detailedOSMLayer) return;
-      const darkBtn = document.getElementById('styleDarkMinimal');
-      const osmBtn = document.getElementById('styleDetailedOSM');
-
-      if (styleName === 'detailed') {
-        if (map.hasLayer(darkMinimalLayer)) map.removeLayer(darkMinimalLayer);
-        if (!map.hasLayer(detailedOSMLayer)) detailedOSMLayer.addTo(map);
-        if (osmBtn) osmBtn.classList.add('active');
-        if (darkBtn) darkBtn.classList.remove('active');
-      } else {
-        if (map.hasLayer(detailedOSMLayer)) map.removeLayer(detailedOSMLayer);
-        if (!map.hasLayer(darkMinimalLayer)) darkMinimalLayer.addTo(map);
-        if (darkBtn) darkBtn.classList.add('active');
-        if (osmBtn) osmBtn.classList.remove('active');
-      }
-
-      try {
-        localStorage.setItem('t101_map_style', styleName);
-      } catch (e) {}
-    }
-
-    const btnWeatherVersion = document.getElementById('btnWeatherVersion');
-    const btnAllVersion = document.getElementById('btnAllVersion');
-    const btnWarnings = document.getElementById('btnWarnings');
-    const btnConfirmed = document.getElementById('btnConfirmed');
-
-    if (btnWeatherVersion && btnAllVersion) {
-      btnWeatherVersion.addEventListener('click', function () {
-        mode = 'weather';
-        btnWeatherVersion.classList.add('active');
-        btnAllVersion.classList.remove('active');
-        updateWarningsDisplay();
-      });
-
-      btnAllVersion.addEventListener('click', function () {
-        mode = 'all';
-        btnAllVersion.classList.add('active');
-        btnWeatherVersion.classList.remove('active');
-        updateWarningsDisplay();
-      });
-    }
-
-    if (btnWarnings) {
-      btnWarnings.addEventListener('click', function () {
-        warningsEnabled = !warningsEnabled;
-        btnWarnings.classList.toggle('active', warningsEnabled);
-        updateWarningsDisplay();
-      });
-    }
-
-    if (btnConfirmed) {
-      btnConfirmed.addEventListener('click', function () {
-        confirmedOnly = !confirmedOnly;
-        btnConfirmed.classList.toggle('active', confirmedOnly);
-        updateWarningsDisplay();
-      });
-    }
-
-    ['btnSiteNames', 'btnReports', 'btnOutlook', 'btnMD'].forEach(function (id) {
-      const btn = document.getElementById(id);
-      if (btn) {
-        btn.addEventListener('click', function () {
-          btn.classList.toggle('active');
-        });
-      }
-    });
-
-    const prodButtons = document.querySelectorAll('.prod-btn');
-    prodButtons.forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        prodButtons.forEach(function (b) { b.classList.remove('active'); });
-        btn.classList.add('active');
-      });
-    });
-
-    if (typeof L !== 'undefined') {
-      map = L.map('map').setView([35.36, -97.78], 10);
-
-      // Clean dark map with zoom-sensitive label density
-      darkMinimalLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-        subdomains: 'abcd',
-        maxZoom: 20
-      });
-
-      // Complicated / detailed street basemap available from Settings
-      detailedOSMLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 19
-      });
-
-      let savedStyle = 'dark';
-      try {
-        savedStyle = localStorage.getItem('t101_map_style') || 'dark';
-      } catch (e) {}
-      applyMapStyle(savedStyle);
-
-      const styleDarkBtn = document.getElementById('styleDarkMinimal');
-      const styleOSMBtn = document.getElementById('styleDetailedOSM');
-      if (styleDarkBtn) {
-        styleDarkBtn.addEventListener('click', function () { applyMapStyle('dark'); });
-      }
-      if (styleOSMBtn) {
-        styleOSMBtn.addEventListener('click', function () { applyMapStyle('detailed'); });
-      }
-
-      sampleWarnings = [
-        { type: 'weather', confirmed: false, layer: makeBox(35.390, -98.02, 35.425, -97.96, '#ffea00', 'Severe Thunderstorm Warning (Base)') },
-        { type: 'weather', confirmed: false, layer: makeBox(35.350, -98.02, 35.385, -97.96, '#d4ac0d', 'Severe Thunderstorm Warning (Considerable)') },
-        { type: 'weather', confirmed: false, layer: makeBox(35.310, -98.02, 35.345, -97.96, '#8a6d00', 'Severe Thunderstorm Warning (Destructive)') },
-        { type: 'weather', confirmed: false, layer: makeBox(35.310, -97.95, 35.425, -97.89, '#e60000', 'Tornado Warning') },
-        { type: 'weather', confirmed: true, layer: makeBox(35.310, -97.88, 35.425, -97.82, '#800000', 'Tornado Warning (PDS)') },
-        { type: 'weather', confirmed: true, layer: makeBox(35.310, -97.81, 35.425, -97.75, '#d946ef', 'Tornado Emergency') },
-        { type: 'weather', confirmed: false, layer: makeBox(35.310, -97.74, 35.425, -97.68, '#16a34a', 'Flood Warning') },
-        { type: 'other', confirmed: false, layer: makeBox(35.310, -97.67, 35.425, -97.61, '#ff4da6', 'Snow Warning') },
-        { type: 'other', confirmed: false, layer: makeBox(35.310, -97.60, 35.425, -97.54, '#a855f7', 'Wind / Gale Warning') }
-      ];
-
-      updateWarningsDisplay();
-
-      const searchForm = document.getElementById('searchForm');
-      if (searchForm) {
-        searchForm.addEventListener('submit', function (e) {
-          e.preventDefault();
-          const input = document.getElementById('searchInput');
-          const query = input ? input.value.trim() : '';
-          if (!query) return;
-          fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(query))
-            .then(function (res) { return res.json(); })
-            .then(function (results) {
-              if (results && results.length > 0 && map) {
-                map.setView([parseFloat(results[0].lat), parseFloat(results[0].lon)], 10);
-              }
-            })
-            .catch(function () {});
-        });
-      }
-    }
-  </script>
-</body>
-</html>
+      const darkBtn = document.getElementById('themeDark');
+      const lightBtn = document.getElementById('
