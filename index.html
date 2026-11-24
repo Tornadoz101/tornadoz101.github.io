@@ -18,31 +18,40 @@
       font-family: sans-serif;
     }
 
-    /* Main container: puts Left Menu | Map | Right Menu side-by-side */
+    /* Outer row: Left Menu | Right Column (Top Menu + Map) */
     .layout {
       display: flex;
       height: 100vh;
       width: 100vw;
     }
 
-    /* Top-to-bottom side panels */
-    .side-panel {
-      width: 240px;          /* Change width if you want wider/narrower menus */
-      height: 100%;          /* Stretches from top to bottom */
+    /* Full-height menu on the left */
+    .left-menu {
+      width: 240px;
+      height: 100%;
       background-color: #1c1c1c;
       padding: 14px;
-      overflow-y: auto;      /* Scrolls if you add lots of settings */
-      border-color: #333;
-      border-style: solid;
-      border-width: 0;
+      border-right: 1px solid #333;
+      overflow-y: auto;
     }
 
-    .left-panel {
-      border-right-width: 1px;
+    /* Right side holds top menu on top and map below */
+    .right-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
     }
 
-    .right-panel {
-      border-left-width: 1px;
+    /* Top bar above the map */
+    .top-menu {
+      height: 56px;
+      background-color: #1c1c1c;
+      padding: 0 14px;
+      border-bottom: 1px solid #333;
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
     .panel-title {
@@ -59,68 +68,32 @@
       font-size: 14px;
     }
 
-    button {
-      width: 100%;
-      padding: 8px;
-      margin-top: 6px;
-      background-color: #3a3a3a;
-      color: white;
-      border: 1px solid #555;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #4a4a4a;
-    }
-
-    /* Map takes the remaining middle space */
+    /* Map fills everything below the top menu */
     #map {
       flex: 1;
-      height: 100%;
+      width: 100%;
     }
   </style>
 </head>
 <body>
   <div class="layout">
-    <!-- LEFT MENU (top to bottom) -->
-    <aside class="side-panel left-panel">
-      <h2 class="panel-title">Radar Controls</h2>
-
+    <!-- FULL-HEIGHT LEFT MENU -->
+    <aside class="left-menu">
+      <h2 class="panel-title">Side Menu</h2>
       <div class="setting-box">
-        <label>
-          <input type="checkbox" id="radarToggle" checked>
-          Show Radar Layer
-        </label>
-      </div>
-
-      <div class="setting-box">
-        <label for="opacitySlider">Radar Opacity</label><br>
-        <input type="range" id="opacitySlider" min="0" max="1" step="0.1" value="0.7" style="width: 100%; margin-top: 6px;">
-      </div>
-
-      <div class="setting-box">
-        <div>Quick Jump</div>
-        <button type="button" onclick="map.setView([35.5, -97.5], 6)">Central Plains</button>
-        <button type="button" onclick="map.setView([35.33, -97.96], 9)">El Reno Area</button>
+        Settings go here
       </div>
     </aside>
 
-    <!-- CENTER MAP -->
-    <div id="map"></div>
+    <!-- RIGHT SIDE: TOP MENU + MAP -->
+    <div class="right-column">
+      <header class="top-menu">
+        <strong>Top Menu</strong>
+        <span>Controls go here</span>
+      </header>
 
-    <!-- RIGHT MENU (top to bottom) -->
-    <aside class="side-panel right-panel">
-      <h2 class="panel-title">Settings & Info</h2>
-
-      <div class="setting-box">
-        <div><strong>Status:</strong> <span id="radarStatus">Loading...</span></div>
-      </div>
-
-      <div class="setting-box">
-        <div>Put your own notes, legends, or extra toggles here as you build.</div>
-      </div>
-    </aside>
+      <div id="map"></div>
+    </div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -131,41 +104,6 @@
       attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19
     }).addTo(map);
-
-    let radarLayer = null;
-
-    fetch('https://api.rainviewer.com/public/weather-maps.json')
-      .then(res => res.json())
-      .then(data => {
-        const latest = data.radar.past[data.radar.past.length - 1];
-        if (latest) {
-          radarLayer = L.tileLayer(`${data.host}${latest.path}/256/{z}/{x}/{y}/2/1_1.png`, {
-            opacity: 0.7,
-            zIndex: 10
-          }).addTo(map);
-          document.getElementById('radarStatus').textContent = 'Radar Online';
-        } else {
-          document.getElementById('radarStatus').textContent = 'No Radar Data';
-        }
-      })
-      .catch(() => {
-        document.getElementById('radarStatus').textContent = 'Feed Offline';
-      });
-
-    // Wire up the left-menu controls
-    document.getElementById('radarToggle').addEventListener('change', (e) => {
-      if (!radarLayer) return;
-      if (e.target.checked) {
-        radarLayer.addTo(map);
-      } else {
-        map.removeLayer(radarLayer);
-      }
-    });
-
-    document.getElementById('opacitySlider').addEventListener('input', (e) => {
-      if (!radarLayer) return;
-      radarLayer.setOpacity(parseFloat(e.target.value));
-    });
   </script>
 </body>
 </html>
