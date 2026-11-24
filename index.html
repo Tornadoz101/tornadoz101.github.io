@@ -168,7 +168,6 @@
       color: #ffffff;
     }
 
-    /* Middle stack: UTC clock on top, Search bar on bottom */
     .top-center-stack {
       flex: 1;
       display: flex;
@@ -224,7 +223,6 @@
       cursor: pointer;
     }
 
-    /* Right group: Settings + Account */
     .top-right-group {
       display: flex;
       align-items: center;
@@ -270,20 +268,21 @@
       color: #ffffff;
     }
 
-    /* Map container */
     .map-wrap {
       position: relative;
       flex: 1;
       width: 100%;
+      height: 100%;
       min-height: 0;
     }
 
     #map {
+      position: absolute;
+      inset: 0;
       height: 100%;
       width: 100%;
     }
 
-    /* Popups */
     .popup-panel {
       display: none;
       position: absolute;
@@ -318,7 +317,6 @@
       font-weight: 700;
       text-align: left;
       cursor: pointer;
-      transition: background-color 0.15s ease, color 0.15s ease;
     }
 
     .provider-btn:hover {
@@ -329,10 +327,6 @@
       background-color: #1d4ed8;
       border-color: #1d4ed8;
       color: #ffffff;
-    }
-
-    .provider-btn.primary:hover {
-      background-color: #1e40af;
     }
 
     .account-signout {
@@ -368,7 +362,6 @@
 </head>
 <body>
   <div class="layout">
-    <!-- LEFT SIDEBAR -->
     <aside class="left-column">
       <div class="brand-box">
         <div class="brand-title">Tornadoz101’s Radar</div>
@@ -390,24 +383,20 @@
       </div>
     </aside>
 
-    <!-- RIGHT SIDE: TOP BAR + MAP -->
     <div class="right-column">
       <header class="top-bar">
         <div class="pill-grid">
-          <!-- Row 1 -->
           <button type="button" class="pill-btn" id="btnSiteNames">Site Names</button>
           <button type="button" class="pill-btn" id="btnAllVersion">All Version</button>
           <button type="button" class="pill-btn" id="btnReports">Reports</button>
           <button type="button" class="pill-btn" id="btnOutlook">Outlook</button>
 
-          <!-- Row 2 -->
           <button type="button" class="pill-btn active" id="btnWeatherVersion">Weather Version</button>
           <button type="button" class="pill-btn active" id="btnWarnings">Warnings</button>
           <button type="button" class="pill-btn" id="btnConfirmed">Confirmed</button>
           <button type="button" class="pill-btn" id="btnMD">MD</button>
         </div>
 
-        <!-- Middle: UTC Clock above Search Bar -->
         <div class="top-center-stack">
           <div class="utc-clock" id="utcClock">--:--:-- UTC</div>
           <form class="search-form" id="searchForm">
@@ -416,7 +405,6 @@
           </form>
         </div>
 
-        <!-- Far Right: Settings + Account -->
         <div class="top-right-group">
           <button type="button" class="settings-btn" id="btnSettings">Settings ⚙️</button>
           <button type="button" class="account-btn" id="btnAccount">Sign In</button>
@@ -433,12 +421,106 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map').setView([35.36, -97.78], 10);
+    // 1. UTC Clock (runs independently so it always ticks)
+    function updateUTCClock() {
+      const clockEl = document.getElementById('utcClock');
+      if (!clockEl) return;
+      const now = new Date();
+      const hh = String(now.getUTCHours()).padStart(2, '0');
+      const mm = String(now.getUTCMinutes()).padStart(2, '0');
+      const ss = String(now.getUTCSeconds()).padStart(2, '0');
+      clockEl.textContent = hh + ':' + mm + ':' + ss + ' UTC';
+    }
+    updateUTCClock();
+    setInterval(updateUTCClock, 1000);
 
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 19
-    }).addTo(map);
+    // 2. Settings & Account Menus (wired independently so they always open/close)
+    const btnSettings = document.getElementById('btnSettings');
+    const settingsModal = document.getElementById('settingsModal');
+    const btnAccount = document.getElementById('btnAccount');
+    const accountModal = document.getElementById('accountModal');
+
+    let currentUser = null;
+    try {
+      currentUser = JSON.parse(localStorage.getItem('t101_user') || 'null');
+    } catch (e) {
+      currentUser = null;
+    }
+
+    function signInWithProvider(providerName) {
+      currentUser = {
+        provider: providerName,
+        label: providerName + ' Account'
+      };
+      try {
+        localStorage.setItem('t101_user', JSON.stringify(currentUser));
+      } catch (e) {}
+      renderAccountUI();
+    }
+
+    function renderAccountUI() {
+      if (!btnAccount || !accountModal) return;
+      if (currentUser) {
+        btnAccount.textContent = currentUser.provider;
+        btnAccount.classList.add('signed-in');
+        accountModal.innerHTML =
+          '<div style="font-weight:800;font-size:14px;">' + currentUser.label + '</div>' +
+          '<div class="status-badge status-unlocked">Live Radar: Unlocked</div>' +
+          '<button type="button" class="account-signout" id="btnSignOut">Sign Out</button>';
+        const signOutBtn = document.getElementById('btnSignOut');
+        if (signOutBtn) {
+          signOutBtn.addEventListener('click', function () {
+            currentUser = null;
+            try {
+              localStorage.removeItem('t101_user');
+            } catch (e) {}
+            renderAccountUI();
+          });
+        }
+      } else {
+        btnAccount.textContent = 'Sign In';
+        btnAccount.classList.remove('signed-in');
+        accountModal.innerHTML =
+          '<div style="font-weight:800;font-size:13px;">Sign in to view live radar</div>' +
+          '<div class="status-badge status-locked">Live Radar: Locked</div>' +
+          '<div class="provider-list">' +
+            '<button type="button" class="provider-btn primary" data-provider="Google">Continue with Google</button>' +
+            '<button type="button" class="provider-btn" data-provider="GitHub">Continue with GitHub</button>' +
+            '<button type="button" class="provider-btn" data-provider="Apple">Continue with Apple</button>' +
+            '<button type="button" class="provider-btn" data-provider="Email">Continue with Email</button>' +
+          '</div>';
+        accountModal.querySelectorAll('.provider-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            signInWithProvider(btn.getAttribute('data-provider'));
+          });
+        });
+      }
+    }
+
+    renderAccountUI();
+
+    if (btnSettings && settingsModal) {
+      btnSettings.addEventListener('click', function () {
+        if (accountModal) accountModal.classList.remove('open');
+        btnSettings.classList.toggle('active');
+        settingsModal.classList.toggle('open');
+      });
+    }
+
+    if (btnAccount && accountModal) {
+      btnAccount.addEventListener('click', function () {
+        if (settingsModal) settingsModal.classList.remove('open');
+        if (btnSettings) btnSettings.classList.remove('active');
+        accountModal.classList.toggle('open');
+      });
+    }
+
+    // 3. Button Toggles
+    let mode = 'weather';
+    let warningsEnabled = true;
+    let confirmedOnly = false;
+    let map = null;
+    let sampleWarnings = [];
 
     function makeBox(s, w, n, e, color, label) {
       return L.rectangle([[s, w], [n, e]], {
@@ -449,7 +531,116 @@
       }).bindPopup(label);
     }
 
-    const sampleWarnings = [
-      { type: 'weather', confirmed: false, layer: makeBox(35.390, -98.02, 35.425, -97.96, '#ffea00', 'Severe Thunderstorm Warning (Base)') },
-      { type: 'weather', confirmed: false, layer: makeBox(35.350, -98.02, 35.385, -97.96, '#d4ac0d', 'Severe Thunderstorm Warning (Considerable)') },
-      { type: 'weather', confirmed: false, layer: makeBox(35.310
+    function updateWarningsDisplay() {
+      if (!map) return;
+      sampleWarnings.forEach(function (item) {
+        const modeMatch = (mode === 'all') || (item.type === 'weather');
+        const confirmedMatch = (!confirmedOnly) || item.confirmed;
+        const shouldShow = warningsEnabled && modeMatch && confirmedMatch;
+
+        if (shouldShow && !map.hasLayer(item.layer)) {
+          item.layer.addTo(map);
+        } else if (!shouldShow && map.hasLayer(item.layer)) {
+          map.removeLayer(item.layer);
+        }
+      });
+    }
+
+    const btnWeatherVersion = document.getElementById('btnWeatherVersion');
+    const btnAllVersion = document.getElementById('btnAllVersion');
+    const btnWarnings = document.getElementById('btnWarnings');
+    const btnConfirmed = document.getElementById('btnConfirmed');
+
+    if (btnWeatherVersion && btnAllVersion) {
+      btnWeatherVersion.addEventListener('click', function () {
+        mode = 'weather';
+        btnWeatherVersion.classList.add('active');
+        btnAllVersion.classList.remove('active');
+        updateWarningsDisplay();
+      });
+
+      btnAllVersion.addEventListener('click', function () {
+        mode = 'all';
+        btnAllVersion.classList.add('active');
+        btnWeatherVersion.classList.remove('active');
+        updateWarningsDisplay();
+      });
+    }
+
+    if (btnWarnings) {
+      btnWarnings.addEventListener('click', function () {
+        warningsEnabled = !warningsEnabled;
+        btnWarnings.classList.toggle('active', warningsEnabled);
+        updateWarningsDisplay();
+      });
+    }
+
+    if (btnConfirmed) {
+      btnConfirmed.addEventListener('click', function () {
+        confirmedOnly = !confirmedOnly;
+        btnConfirmed.classList.toggle('active', confirmedOnly);
+        updateWarningsDisplay();
+      });
+    }
+
+    ['btnSiteNames', 'btnReports', 'btnOutlook', 'btnMD'].forEach(function (id) {
+      const btn = document.getElementById(id);
+      if (btn) {
+        btn.addEventListener('click', function () {
+          btn.classList.toggle('active');
+        });
+      }
+    });
+
+    const prodButtons = document.querySelectorAll('.prod-btn');
+    prodButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        prodButtons.forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+      });
+    });
+
+    // 4. Map & Sample Warnings
+    if (typeof L !== 'undefined') {
+      map = L.map('map').setView([35.36, -97.78], 10);
+
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
+      }).addTo(map);
+
+      sampleWarnings = [
+        { type: 'weather', confirmed: false, layer: makeBox(35.390, -98.02, 35.425, -97.96, '#ffea00', 'Severe Thunderstorm Warning (Base)') },
+        { type: 'weather', confirmed: false, layer: makeBox(35.350, -98.02, 35.385, -97.96, '#d4ac0d', 'Severe Thunderstorm Warning (Considerable)') },
+        { type: 'weather', confirmed: false, layer: makeBox(35.310, -98.02, 35.345, -97.96, '#8a6d00', 'Severe Thunderstorm Warning (Destructive)') },
+        { type: 'weather', confirmed: false, layer: makeBox(35.310, -97.95, 35.425, -97.89, '#e60000', 'Tornado Warning') },
+        { type: 'weather', confirmed: true, layer: makeBox(35.310, -97.88, 35.425, -97.82, '#800000', 'Tornado Warning (PDS)') },
+        { type: 'weather', confirmed: true, layer: makeBox(35.310, -97.81, 35.425, -97.75, '#d946ef', 'Tornado Emergency') },
+        { type: 'weather', confirmed: false, layer: makeBox(35.310, -97.74, 35.425, -97.68, '#16a34a', 'Flood Warning') },
+        { type: 'other', confirmed: false, layer: makeBox(35.310, -97.67, 35.425, -97.61, '#ff4da6', 'Snow Warning') },
+        { type: 'other', confirmed: false, layer: makeBox(35.310, -97.60, 35.425, -97.54, '#a855f7', 'Wind / Gale Warning') }
+      ];
+
+      updateWarningsDisplay();
+
+      const searchForm = document.getElementById('searchForm');
+      if (searchForm) {
+        searchForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          const input = document.getElementById('searchInput');
+          const query = input ? input.value.trim() : '';
+          if (!query) return;
+          fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(query))
+            .then(function (res) { return res.json(); })
+            .then(function (results) {
+              if (results && results.length > 0 && map) {
+                map.setView([parseFloat(results[0].lat), parseFloat(results[0].lon)], 10);
+              }
+            })
+            .catch(function () {});
+        });
+      }
+    }
+  </script>
+</body>
+</html>
