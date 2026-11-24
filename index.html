@@ -223,11 +223,13 @@
       cursor: pointer;
     }
 
+    /* Preserves the right-side space where Account sat */
     .top-right-group {
       display: flex;
       align-items: center;
       gap: 8px;
       margin-left: auto;
+      padding-right: 78px;
       flex-shrink: 0;
     }
 
@@ -250,24 +252,6 @@
       color: #374151;
     }
 
-    .account-btn {
-      padding: 5px 12px;
-      border-radius: 999px;
-      border: 2px solid #111111;
-      background-color: #111111;
-      color: #ffffff;
-      font-size: 11px;
-      font-weight: 800;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .account-btn.signed-in {
-      background-color: #16a34a;
-      border-color: #15803d;
-      color: #ffffff;
-    }
-
     .map-wrap {
       position: relative;
       flex: 1;
@@ -288,7 +272,8 @@
       position: absolute;
       top: 10px;
       right: 10px;
-      width: 250px;
+      width: 240px;
+      min-height: 150px;
       background-color: #ffffff;
       border: 3px solid #000000;
       z-index: 1000;
@@ -298,65 +283,6 @@
 
     .popup-panel.open {
       display: block;
-    }
-
-    .provider-list {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-top: 10px;
-    }
-
-    .provider-btn {
-      width: 100%;
-      padding: 7px 10px;
-      border: 2px solid #111111;
-      background-color: #ffffff;
-      color: #111111;
-      font-size: 12px;
-      font-weight: 700;
-      text-align: left;
-      cursor: pointer;
-    }
-
-    .provider-btn:hover {
-      background-color: #f3f4f6;
-    }
-
-    .provider-btn.primary {
-      background-color: #1d4ed8;
-      border-color: #1d4ed8;
-      color: #ffffff;
-    }
-
-    .account-signout {
-      width: 100%;
-      margin-top: 10px;
-      padding: 6px;
-      border: none;
-      background-color: #dc2626;
-      color: #ffffff;
-      font-size: 12px;
-      font-weight: 800;
-      cursor: pointer;
-    }
-
-    .status-badge {
-      display: inline-block;
-      margin-top: 6px;
-      padding: 3px 7px;
-      font-size: 11px;
-      font-weight: 800;
-    }
-
-    .status-locked {
-      background-color: #fee2e2;
-      color: #991b1b;
-    }
-
-    .status-unlocked {
-      background-color: #dcfce7;
-      color: #166534;
     }
   </style>
 </head>
@@ -407,21 +333,18 @@
 
         <div class="top-right-group">
           <button type="button" class="settings-btn" id="btnSettings">Settings ⚙️</button>
-          <button type="button" class="account-btn" id="btnAccount">Sign In</button>
         </div>
       </header>
 
       <div class="map-wrap">
         <div id="map"></div>
-        <div class="popup-panel" id="settingsModal" style="min-height: 140px;"></div>
-        <div class="popup-panel" id="accountModal"></div>
+        <div class="popup-panel" id="settingsModal"></div>
       </div>
     </div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // 1. UTC Clock (runs independently so it always ticks)
     function updateUTCClock() {
       const clockEl = document.getElementById('utcClock');
       if (!clockEl) return;
@@ -434,88 +357,15 @@
     updateUTCClock();
     setInterval(updateUTCClock, 1000);
 
-    // 2. Settings & Account Menus (wired independently so they always open/close)
     const btnSettings = document.getElementById('btnSettings');
     const settingsModal = document.getElementById('settingsModal');
-    const btnAccount = document.getElementById('btnAccount');
-    const accountModal = document.getElementById('accountModal');
-
-    let currentUser = null;
-    try {
-      currentUser = JSON.parse(localStorage.getItem('t101_user') || 'null');
-    } catch (e) {
-      currentUser = null;
-    }
-
-    function signInWithProvider(providerName) {
-      currentUser = {
-        provider: providerName,
-        label: providerName + ' Account'
-      };
-      try {
-        localStorage.setItem('t101_user', JSON.stringify(currentUser));
-      } catch (e) {}
-      renderAccountUI();
-    }
-
-    function renderAccountUI() {
-      if (!btnAccount || !accountModal) return;
-      if (currentUser) {
-        btnAccount.textContent = currentUser.provider;
-        btnAccount.classList.add('signed-in');
-        accountModal.innerHTML =
-          '<div style="font-weight:800;font-size:14px;">' + currentUser.label + '</div>' +
-          '<div class="status-badge status-unlocked">Live Radar: Unlocked</div>' +
-          '<button type="button" class="account-signout" id="btnSignOut">Sign Out</button>';
-        const signOutBtn = document.getElementById('btnSignOut');
-        if (signOutBtn) {
-          signOutBtn.addEventListener('click', function () {
-            currentUser = null;
-            try {
-              localStorage.removeItem('t101_user');
-            } catch (e) {}
-            renderAccountUI();
-          });
-        }
-      } else {
-        btnAccount.textContent = 'Sign In';
-        btnAccount.classList.remove('signed-in');
-        accountModal.innerHTML =
-          '<div style="font-weight:800;font-size:13px;">Sign in to view live radar</div>' +
-          '<div class="status-badge status-locked">Live Radar: Locked</div>' +
-          '<div class="provider-list">' +
-            '<button type="button" class="provider-btn primary" data-provider="Google">Continue with Google</button>' +
-            '<button type="button" class="provider-btn" data-provider="GitHub">Continue with GitHub</button>' +
-            '<button type="button" class="provider-btn" data-provider="Apple">Continue with Apple</button>' +
-            '<button type="button" class="provider-btn" data-provider="Email">Continue with Email</button>' +
-          '</div>';
-        accountModal.querySelectorAll('.provider-btn').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            signInWithProvider(btn.getAttribute('data-provider'));
-          });
-        });
-      }
-    }
-
-    renderAccountUI();
-
     if (btnSettings && settingsModal) {
       btnSettings.addEventListener('click', function () {
-        if (accountModal) accountModal.classList.remove('open');
         btnSettings.classList.toggle('active');
         settingsModal.classList.toggle('open');
       });
     }
 
-    if (btnAccount && accountModal) {
-      btnAccount.addEventListener('click', function () {
-        if (settingsModal) settingsModal.classList.remove('open');
-        if (btnSettings) btnSettings.classList.remove('active');
-        accountModal.classList.toggle('open');
-      });
-    }
-
-    // 3. Button Toggles
     let mode = 'weather';
     let warningsEnabled = true;
     let confirmedOnly = false;
@@ -600,7 +450,6 @@
       });
     });
 
-    // 4. Map & Sample Warnings
     if (typeof L !== 'undefined') {
       map = L.map('map').setView([35.36, -97.78], 10);
 
