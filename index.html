@@ -1,9 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <title>Tornadoz101's Radar</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
   <style>
     :root {
       --panel-bg: #1e293b;
@@ -43,7 +47,8 @@
       box-sizing: border-box;
     }
 
-    html, body {
+    html,
+    body {
       height: 100%;
       width: 100%;
       margin: 0;
@@ -144,17 +149,41 @@
       transition: background-color 0.15s ease, color 0.15s ease;
     }
 
-    .prod-reflectivity { border-color: #1d4ed8; }
-    .prod-reflectivity.active { background-color: #1d4ed8; color: #ffffff; }
+    .prod-reflectivity {
+      border-color: #1d4ed8;
+    }
 
-    .prod-velocity { border-color: #22c55e; }
-    .prod-velocity.active { background-color: #22c55e; color: #052e16; }
+    .prod-reflectivity.active {
+      background-color: #1d4ed8;
+      color: #ffffff;
+    }
 
-    .prod-spectrum { border-color: #6b7280; }
-    .prod-spectrum.active { background-color: #6b7280; color: #ffffff; }
+    .prod-velocity {
+      border-color: #22c55e;
+    }
 
-    .prod-cc { border-color: #f43f5e; }
-    .prod-cc.active { background-color: #f43f5e; color: #ffffff; }
+    .prod-velocity.active {
+      background-color: #22c55e;
+      color: #052e16;
+    }
+
+    .prod-spectrum {
+      border-color: #6b7280;
+    }
+
+    .prod-spectrum.active {
+      background-color: #6b7280;
+      color: #ffffff;
+    }
+
+    .prod-cc {
+      border-color: #f43f5e;
+    }
+
+    .prod-cc.active {
+      background-color: #f43f5e;
+      color: #ffffff;
+    }
 
     /* RIGHT COLUMN */
     .right-column {
@@ -384,10 +413,18 @@
         </div>
 
         <div class="product-buttons">
-          <button type="button" class="prod-btn prod-reflectivity active" data-prod="ref">Reflectivity</button>
-          <button type="button" class="prod-btn prod-velocity" data-prod="vel">Velocity</button>
-          <button type="button" class="prod-btn prod-spectrum" data-prod="sw">Spectrum Width</button>
-          <button type="button" class="prod-btn prod-cc" data-prod="cc">CC</button>
+          <button type="button" class="prod-btn prod-reflectivity active" data-prod="ref">
+            Reflectivity
+          </button>
+          <button type="button" class="prod-btn prod-velocity" data-prod="vel">
+            Velocity
+          </button>
+          <button type="button" class="prod-btn prod-spectrum" data-prod="sw">
+            Spectrum Width
+          </button>
+          <button type="button" class="prod-btn prod-cc" data-prod="cc">
+            CC
+          </button>
         </div>
       </div>
     </aside>
@@ -409,7 +446,12 @@
         <div class="top-center-stack">
           <div class="utc-clock" id="utcClock">--:--:-- UTC</div>
           <form class="search-form" id="searchForm">
-            <input type="text" class="search-input" id="searchInput" placeholder="Search city or state...">
+            <input
+              type="text"
+              class="search-input"
+              id="searchInput"
+              placeholder="Search city or state..."
+            />
             <button type="submit" class="search-go">Go</button>
           </form>
         </div>
@@ -421,6 +463,7 @@
 
       <div class="map-wrap">
         <div id="map"></div>
+
         <div class="popup-panel" id="settingsModal">
           <div class="settings-title">Theme</div>
           <div class="option-row">
@@ -430,8 +473,12 @@
 
           <div class="settings-title">Map Style</div>
           <div class="option-group">
-            <button type="button" class="opt-btn active" id="styleDarkMinimal">Dark Minimal (Default)</button>
-            <button type="button" class="opt-btn" id="styleDetailedOSM">Detailed Street (OSM)</button>
+            <button type="button" class="opt-btn active" id="styleDarkMinimal">
+              Dark Minimal (Default)
+            </button>
+            <button type="button" class="opt-btn" id="styleDetailedOSM">
+              Detailed Street (OSM)
+            </button>
           </div>
         </div>
       </div>
@@ -440,9 +487,338 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    function applyThemeMode(themeName) {
-      const isLight = themeName === 'light';
-      document.body.classList.toggle('light-mode', isLight);
+    // Paste your CARTO API key here once it arrives in your email
+    const CARTO_API_KEY = "";
 
-      const darkBtn = document.getElementById('themeDark');
-      const lightBtn = document.getElementById('
+    function applyThemeMode(themeName) {
+      const isLight = themeName === "light";
+      document.body.classList.toggle("light-mode", isLight);
+
+      const darkBtn = document.getElementById("themeDark");
+      const lightBtn = document.getElementById("themeLight");
+
+      if (darkBtn) {
+        darkBtn.classList.toggle("active", !isLight);
+      }
+
+      if (lightBtn) {
+        lightBtn.classList.toggle("active", isLight);
+      }
+
+      try {
+        localStorage.setItem("t101_theme_mode", isLight ? "light" : "dark");
+      } catch (err) {
+        // Ignore storage errors
+      }
+    }
+
+    let savedTheme = "dark";
+    try {
+      savedTheme = localStorage.getItem("t101_theme_mode") || "dark";
+    } catch (err) {
+      savedTheme = "dark";
+    }
+    applyThemeMode(savedTheme);
+
+    const themeDarkBtn = document.getElementById("themeDark");
+    const themeLightBtn = document.getElementById("themeLight");
+
+    if (themeDarkBtn) {
+      themeDarkBtn.addEventListener("click", function () {
+        applyThemeMode("dark");
+      });
+    }
+
+    if (themeLightBtn) {
+      themeLightBtn.addEventListener("click", function () {
+        applyThemeMode("light");
+      });
+    }
+
+    function updateUTCClock() {
+      const clockEl = document.getElementById("utcClock");
+      if (!clockEl) {
+        return;
+      }
+
+      const now = new Date();
+      const hh = String(now.getUTCHours()).padStart(2, "0");
+      const mm = String(now.getUTCMinutes()).padStart(2, "0");
+      const ss = String(now.getUTCSeconds()).padStart(2, "0");
+      clockEl.textContent = hh + ":" + mm + ":" + ss + " UTC";
+    }
+
+    updateUTCClock();
+    setInterval(updateUTCClock, 1000);
+
+    const btnSettings = document.getElementById("btnSettings");
+    const settingsModal = document.getElementById("settingsModal");
+
+    if (btnSettings && settingsModal) {
+      btnSettings.addEventListener("click", function () {
+        btnSettings.classList.toggle("active");
+        settingsModal.classList.toggle("open");
+      });
+    }
+
+    let mode = "weather";
+    let warningsEnabled = true;
+    let confirmedOnly = false;
+    let map = null;
+    let sampleWarnings = [];
+    let darkMinimalLayer = null;
+    let detailedOSMLayer = null;
+
+    function makeBox(s, w, n, e, color, label) {
+      return L.rectangle(
+        [
+          [s, w],
+          [n, e]
+        ],
+        {
+          color: color,
+          fillColor: color,
+          fillOpacity: 0.5,
+          weight: 2
+        }
+      ).bindPopup(label);
+    }
+
+    function updateWarningsDisplay() {
+      if (!map) {
+        return;
+      }
+
+      sampleWarnings.forEach(function (item) {
+        const modeMatch = mode === "all" || item.type === "weather";
+        const confirmedMatch = !confirmedOnly || item.confirmed;
+        const shouldShow = warningsEnabled && modeMatch && confirmedMatch;
+
+        if (shouldShow && !map.hasLayer(item.layer)) {
+          item.layer.addTo(map);
+        } else if (!shouldShow && map.hasLayer(item.layer)) {
+          map.removeLayer(item.layer);
+        }
+      });
+    }
+
+    function applyMapStyle(styleName) {
+      if (!map || !darkMinimalLayer || !detailedOSMLayer) {
+        return;
+      }
+
+      const darkBtn = document.getElementById("styleDarkMinimal");
+      const osmBtn = document.getElementById("styleDetailedOSM");
+
+      if (styleName === "detailed") {
+        if (map.hasLayer(darkMinimalLayer)) {
+          map.removeLayer(darkMinimalLayer);
+        }
+        if (!map.hasLayer(detailedOSMLayer)) {
+          detailedOSMLayer.addTo(map);
+        }
+        if (osmBtn) {
+          osmBtn.classList.add("active");
+        }
+        if (darkBtn) {
+          darkBtn.classList.remove("active");
+        }
+      } else {
+        if (map.hasLayer(detailedOSMLayer)) {
+          map.removeLayer(detailedOSMLayer);
+        }
+        if (!map.hasLayer(darkMinimalLayer)) {
+          darkMinimalLayer.addTo(map);
+        }
+        if (darkBtn) {
+          darkBtn.classList.add("active");
+        }
+        if (osmBtn) {
+          osmBtn.classList.remove("active");
+        }
+      }
+
+      try {
+        localStorage.setItem("t101_map_style", styleName);
+      } catch (err) {
+        // Ignore storage errors
+      }
+    }
+
+    const btnWeatherVersion = document.getElementById("btnWeatherVersion");
+    const btnAllVersion = document.getElementById("btnAllVersion");
+    const btnWarnings = document.getElementById("btnWarnings");
+    const btnConfirmed = document.getElementById("btnConfirmed");
+
+    if (btnWeatherVersion && btnAllVersion) {
+      btnWeatherVersion.addEventListener("click", function () {
+        mode = "weather";
+        btnWeatherVersion.classList.add("active");
+        btnAllVersion.classList.remove("active");
+        updateWarningsDisplay();
+      });
+
+      btnAllVersion.addEventListener("click", function () {
+        mode = "all";
+        btnAllVersion.classList.add("active");
+        btnWeatherVersion.classList.remove("active");
+        updateWarningsDisplay();
+      });
+    }
+
+    if (btnWarnings) {
+      btnWarnings.addEventListener("click", function () {
+        warningsEnabled = !warningsEnabled;
+        btnWarnings.classList.toggle("active", warningsEnabled);
+        updateWarningsDisplay();
+      });
+    }
+
+    if (btnConfirmed) {
+      btnConfirmed.addEventListener("click", function () {
+        confirmedOnly = !confirmedOnly;
+        btnConfirmed.classList.toggle("active", confirmedOnly);
+        updateWarningsDisplay();
+      });
+    }
+
+    ["btnSiteNames", "btnReports", "btnOutlook", "btnMD"].forEach(function (id) {
+      const btn = document.getElementById(id);
+      if (btn) {
+        btn.addEventListener("click", function () {
+          btn.classList.toggle("active");
+        });
+      }
+    });
+
+    const prodButtons = document.querySelectorAll(".prod-btn");
+    prodButtons.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        prodButtons.forEach(function (b) {
+          b.classList.remove("active");
+        });
+        btn.classList.add("active");
+      });
+    });
+
+    if (typeof L !== "undefined") {
+      map = L.map("map").setView([35.36, -97.78], 10);
+
+      const cleanKey = CARTO_API_KEY.trim();
+      const cartoUrl = cleanKey
+        ? "https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=" +
+          encodeURIComponent(cleanKey)
+        : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+
+      darkMinimalLayer = L.tileLayer(cartoUrl, {
+        attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+        subdomains: "abcd",
+        maxZoom: 20
+      });
+
+      detailedOSMLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors",
+        maxZoom: 19
+      });
+
+      let savedStyle = "dark";
+      try {
+        savedStyle = localStorage.getItem("t101_map_style") || "dark";
+      } catch (err) {
+        savedStyle = "dark";
+      }
+      applyMapStyle(savedStyle);
+
+      const styleDarkBtn = document.getElementById("styleDarkMinimal");
+      const styleOSMBtn = document.getElementById("styleDetailedOSM");
+
+      if (styleDarkBtn) {
+        styleDarkBtn.addEventListener("click", function () {
+          applyMapStyle("dark");
+        });
+      }
+
+      if (styleOSMBtn) {
+        styleOSMBtn.addEventListener("click", function () {
+          applyMapStyle("detailed");
+        });
+      }
+
+      sampleWarnings = [
+        {
+          type: "weather",
+          confirmed: false,
+          layer: makeBox(35.390, -98.02, 35.425, -97.96, "#ffea00", "Severe Thunderstorm Warning (Base)")
+        },
+        {
+          type: "weather",
+          confirmed: false,
+          layer: makeBox(35.350, -98.02, 35.385, -97.96, "#d4ac0d", "Severe Thunderstorm Warning (Considerable)")
+        },
+        {
+          type: "weather",
+          confirmed: false,
+          layer: makeBox(35.310, -98.02, 35.345, -97.96, "#8a6d00", "Severe Thunderstorm Warning (Destructive)")
+        },
+        {
+          type: "weather",
+          confirmed: false,
+          layer: makeBox(35.310, -97.95, 35.425, -97.89, "#e60000", "Tornado Warning")
+        },
+        {
+          type: "weather",
+          confirmed: true,
+          layer: makeBox(35.310, -97.88, 35.425, -97.82, "#800000", "Tornado Warning (PDS)")
+        },
+        {
+          type: "weather",
+          confirmed: true,
+          layer: makeBox(35.310, -97.81, 35.425, -97.75, "#d946ef", "Tornado Emergency")
+        },
+        {
+          type: "weather",
+          confirmed: false,
+          layer: makeBox(35.310, -97.74, 35.425, -97.68, "#16a34a", "Flood Warning")
+        },
+        {
+          type: "other",
+          confirmed: false,
+          layer: makeBox(35.310, -97.67, 35.425, -97.61, "#ff4da6", "Snow Warning")
+        },
+        {
+          type: "other",
+          confirmed: false,
+          layer: makeBox(35.310, -97.60, 35.425, -97.54, "#a855f7", "Wind / Gale Warning")
+        }
+      ];
+
+      updateWarningsDisplay();
+
+      const searchForm = document.getElementById("searchForm");
+      if (searchForm) {
+        searchForm.addEventListener("submit", function (e) {
+          e.preventDefault();
+          const input = document.getElementById("searchInput");
+          const query = input ? input.value.trim() : "";
+          if (!query) {
+            return;
+          }
+
+          fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(query))
+            .then(function (res) {
+              return res.json();
+            })
+            .then(function (results) {
+              if (results && results.length > 0 && map) {
+                map.setView([parseFloat(results[0].lat), parseFloat(results[0].lon)], 10);
+              }
+            })
+            .catch(function () {
+              // Ignore network errors
+            });
+        });
+      }
+    }
+  </script>
+</body>
+</html>
