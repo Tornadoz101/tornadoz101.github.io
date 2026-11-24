@@ -223,7 +223,6 @@
       cursor: pointer;
     }
 
-    /* Preserves the right-side space where Account sat */
     .top-right-group {
       display: flex;
       align-items: center;
@@ -265,6 +264,7 @@
       inset: 0;
       height: 100%;
       width: 100%;
+      background-color: #18181b;
     }
 
     .popup-panel {
@@ -272,7 +272,7 @@
       position: absolute;
       top: 10px;
       right: 10px;
-      width: 240px;
+      width: 245px;
       min-height: 150px;
       background-color: #ffffff;
       border: 3px solid #000000;
@@ -283,6 +283,36 @@
 
     .popup-panel.open {
       display: block;
+    }
+
+    .settings-title {
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .map-style-options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .style-opt-btn {
+      width: 100%;
+      padding: 7px 9px;
+      border: 2px solid #9ca3af;
+      background-color: #ffffff;
+      color: #111111;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .style-opt-btn.active {
+      border-color: #1d4ed8;
+      background-color: #1d4ed8;
+      color: #ffffff;
     }
   </style>
 </head>
@@ -338,7 +368,13 @@
 
       <div class="map-wrap">
         <div id="map"></div>
-        <div class="popup-panel" id="settingsModal"></div>
+        <div class="popup-panel" id="settingsModal">
+          <div class="settings-title">Map Style</div>
+          <div class="map-style-options">
+            <button type="button" class="style-opt-btn active" id="styleDarkMinimal">Dark Minimal (Default)</button>
+            <button type="button" class="style-opt-btn" id="styleDetailedOSM">Detailed Street (OSM)</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -371,6 +407,8 @@
     let confirmedOnly = false;
     let map = null;
     let sampleWarnings = [];
+    let darkMinimalLayer = null;
+    let detailedOSMLayer = null;
 
     function makeBox(s, w, n, e, color, label) {
       return L.rectangle([[s, w], [n, e]], {
@@ -394,6 +432,28 @@
           map.removeLayer(item.layer);
         }
       });
+    }
+
+    function applyMapStyle(styleName) {
+      if (!map || !darkMinimalLayer || !detailedOSMLayer) return;
+      const darkBtn = document.getElementById('styleDarkMinimal');
+      const osmBtn = document.getElementById('styleDetailedOSM');
+
+      if (styleName === 'detailed') {
+        if (map.hasLayer(darkMinimalLayer)) map.removeLayer(darkMinimalLayer);
+        if (!map.hasLayer(detailedOSMLayer)) detailedOSMLayer.addTo(map);
+        if (osmBtn) osmBtn.classList.add('active');
+        if (darkBtn) darkBtn.classList.remove('active');
+      } else {
+        if (map.hasLayer(detailedOSMLayer)) map.removeLayer(detailedOSMLayer);
+        if (!map.hasLayer(darkMinimalLayer)) darkMinimalLayer.addTo(map);
+        if (darkBtn) darkBtn.classList.add('active');
+        if (osmBtn) osmBtn.classList.remove('active');
+      }
+
+      try {
+        localStorage.setItem('t101_map_style', styleName);
+      } catch (e) {}
     }
 
     const btnWeatherVersion = document.getElementById('btnWeatherVersion');
@@ -453,10 +513,33 @@
     if (typeof L !== 'undefined') {
       map = L.map('map').setView([35.36, -97.78], 10);
 
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      // Clean dark map with zoom-sensitive label density
+      darkMinimalLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 20
+      });
+
+      // Complicated / detailed street basemap available from Settings
+      detailedOSMLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19
-      }).addTo(map);
+      });
+
+      let savedStyle = 'dark';
+      try {
+        savedStyle = localStorage.getItem('t101_map_style') || 'dark';
+      } catch (e) {}
+      applyMapStyle(savedStyle);
+
+      const styleDarkBtn = document.getElementById('styleDarkMinimal');
+      const styleOSMBtn = document.getElementById('styleDetailedOSM');
+      if (styleDarkBtn) {
+        styleDarkBtn.addEventListener('click', function () { applyMapStyle('dark'); });
+      }
+      if (styleOSMBtn) {
+        styleOSMBtn.addEventListener('click', function () { applyMapStyle('detailed'); });
+      }
 
       sampleWarnings = [
         { type: 'weather', confirmed: false, layer: makeBox(35.390, -98.02, 35.425, -97.96, '#ffea00', 'Severe Thunderstorm Warning (Base)') },
