@@ -24,6 +24,7 @@
       --settings-hover: #ffffff;
       --popup-bg: #1e293b;
       --popup-text: #ffffff;
+      --disclaimer-text: #ef4444;
     }
 
     body.light-mode {
@@ -41,6 +42,7 @@
       --settings-hover: #374151;
       --popup-bg: #ffffff;
       --popup-text: #111111;
+      --disclaimer-text: #dc2626;
     }
 
     * {
@@ -79,13 +81,13 @@
     }
 
     .brand-box {
-      height: 56px;
+      min-height: 76px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       border-bottom: 3px solid var(--border-color);
-      padding: 2px 8px;
+      padding: 4px 8px;
       text-align: center;
       flex-shrink: 0;
     }
@@ -103,6 +105,15 @@
       color: var(--muted-text);
       margin-top: 2px;
       line-height: 1;
+    }
+
+    .brand-disclaimer {
+      font-size: 8px;
+      font-weight: 800;
+      color: var(--disclaimer-text);
+      margin-top: 4px;
+      line-height: 1.15;
+      letter-spacing: 0.2px;
     }
 
     .left-body {
@@ -237,7 +248,7 @@
     }
 
     .top-bar {
-      min-height: 56px;
+      min-height: 76px;
       background: var(--top-bar-bg);
       color: var(--panel-text);
       border-bottom: 3px solid var(--border-color);
@@ -462,6 +473,9 @@
       <div class="brand-box">
         <div class="brand-title">Tornadoz101’s Radar</div>
         <div class="brand-version">Version 1.1</div>
+        <div class="brand-disclaimer">
+          <strong>SCANS ARE THE LATEST AVAILABLE, MAY NOT BE DIRECTLY UP TO DATE</strong>
+        </div>
       </div>
 
       <div class="left-body">
