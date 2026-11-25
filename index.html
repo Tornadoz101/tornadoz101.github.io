@@ -500,6 +500,15 @@
       background-color: #18181b;
     }
 
+    .level2-canvas-layer {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 350;
+    }
+
     .map-site-text {
       display: inline-block;
       color: #9ca3af;
@@ -617,7 +626,7 @@
             </div>
             <div class="elev-grid" id="elevGrid"></div>
             <div class="radar-status-note" id="radarFeedStatus">
-              KTLX • Tilt 0.5° • N0Q
+              KTLX • Tilt 0.5° • L2 Canvas
             </div>
           </div>
         </div>
@@ -673,6 +682,7 @@
 
       <div class="map-wrap">
         <div id="map"></div>
+        <canvas id="level2Canvas" class="level2-canvas-layer"></canvas>
 
         <div class="popup-panel" id="settingsModal">
           <div class="settings-title">Theme</div>
@@ -699,6 +709,7 @@
   <script>
     const CARTO_API_KEY = "cb1_5fjg_1_351c53d02c76f010f2762ee8";
     const MAX_LOOP_FRAMES = 10;
+    const S3_BUCKET_URL = "https://unidata-nexrad-level2.s3.amazonaws.com";
 
     const OK_PRIMARY_RADARS = [
       { id: "KTLX", sector: "TLX", name: "Oklahoma City / Norman, OK", lat: 35.3334, lon: -97.2779 },
@@ -708,15 +719,15 @@
     ];
 
     const ELEVATION_LEVELS = [
-      { angle: "0.5°", code: "0" },
-      { angle: "0.9°", code: "1" },
-      { angle: "1.3°", code: "2" },
-      { angle: "1.8°", code: "3" },
-      { angle: "2.4°", code: "0" },
-      { angle: "3.1°", code: "0" },
-      { angle: "4.0°", code: "0" },
-      { angle: "5.1°", code: "0" },
-      { angle: "6.4°", code: "0" }
+      { angle: "0.5°", deg: 0.5, code: "0" },
+      { angle: "0.9°", deg: 0.9, code: "1" },
+      { angle: "1.3°", deg: 1.3, code: "2" },
+      { angle: "1.8°", deg: 1.8, code: "3" },
+      { angle: "2.4°", deg: 2.4, code: "0" },
+      { angle: "3.1°", deg: 3.1, code: "0" },
+      { angle: "4.0°", deg: 4.0, code: "0" },
+      { angle: "5.1°", deg: 5.1, code: "0" },
+      { angle: "6.4°", deg: 6.4, code: "0" }
     ];
 
     const PRODUCT_PREFIX = {
@@ -738,12 +749,17 @@
     let selectedProductKey = "ref";
     let siteNamesVisible = true;
     const radarNameLayers = {};
-    let activeRadarLayer = null;
+    let fallbackWmsLayer = null;
 
     let scanFrames = [];
     let currentFrameIndex = 0;
     let isPlaying = false;
     let playTimer = null;
+
+    // Cache of parsed Level II sweeps keyed by S3 key: { sweeps: Map<elevNumber, { elevAngle, radials }> }
+    const decodedVolumeCache = new Map();
+    let currentDecodedVolume = null;
+    let fetchToken = 0;
 
     function getActiveRadarObj() {
       return OK_PRIMARY_RADARS.find(function (r) {
@@ -870,56 +886,833 @@
       });
     }
 
-    function parseNexradFilenameToTimestamp(filename) {
-      const match = filename.match(/^[A-Z]{4}(\d{8})_(\d{4})/);
-      if (!match) {
-        return null;
+    /* =========================================================================
+       PURE-JS BZIP2 DECOMPRESSOR (BZh block stream decoder for NEXRAD L2)
+       ========================================================================= */
+    function bzip2DecompressStream(bytes) {
+      const outChunks = [];
+      let pos = 0;
+
+      while (pos + 4 <= bytes.length) {
+        // Look for "BZh" signature
+        if (bytes[pos] === 0x42 && bytes[pos + 1] === 0x5a && bytes[pos + 2] === 0x68) {
+          const blockSize100k = bytes[pos + 3] - 0x30;
+          if (blockSize100k < 1 || blockSize100k > 9) {
+            break;
+          }
+          const decoded = decodeSingleBzip2Block(bytes, pos + 4, blockSize100k);
+          if (!decoded || !decoded.data) {
+            break;
+          }
+          outChunks.push(decoded.data);
+          pos = decoded.nextBytePos;
+        } else {
+          pos++;
+        }
       }
-      return match[1] + match[2];
+
+      let totalLen = 0;
+      for (let i = 0; i < outChunks.length; i++) {
+        totalLen += outChunks[i].length;
+      }
+      const combined = new Uint8Array(totalLen);
+      let offset = 0;
+      for (let i = 0; i < outChunks.length; i++) {
+        combined.set(outChunks[i], offset);
+        offset += outChunks[i].length;
+      }
+      return combined;
     }
 
-    function updateRadarMapLayer() {
-      const statusEl = document.getElementById("radarFeedStatus");
+    // Standard bzip2 block decoder supporting BWT + MTF + RLE1 + Huffman
+    function decodeSingleBzip2Block(data, startByteOffset, blockSize100k) {
+      let bitBuf = 0;
+      let bitCount = 0;
+      let byteIdx = startByteOffset;
+
+      function readBits(n) {
+        while (bitCount < n) {
+          if (byteIdx >= data.length) {
+            throw new Error("Unexpected EOF in bzip2 stream");
+          }
+          bitBuf = (bitBuf << 8) | data[byteIdx++];
+          bitCount += 8;
+        }
+        bitCount -= n;
+        const val = (bitBuf >>> bitCount) & ((1 << n) - 1);
+        return val >>> 0;
+      }
+
+      function readBit() {
+        return readBits(1);
+      }
+
+      try {
+        const blockType = readBits(48);
+        // Check end-of-stream magic (0x177245385090) vs block magic (0x314159265359)
+        if (blockType === 0x177245385090) {
+          return { data: new Uint8Array(0), nextBytePos: byteIdx };
+        }
+        if (blockType !== 0x314159265359) {
+          return null;
+        }
+
+        // Skip 32-bit block CRC
+        readBits(32);
+
+        const randBit = readBit();
+        const origPtr = readBits(24);
+
+        // Build 256-entry symbol map from 16x16 bitmask
+        const inUse16 = readBits(16);
+        const symToByte = new Uint8Array(256);
+        let nInUse = 0;
+        for (let i = 0; i < 16; i++) {
+          if (inUse16 & (1 << (15 - i))) {
+            const mask16 = readBits(16);
+            for (let j = 0; j < 16; j++) {
+              if (mask16 & (1 << (15 - j))) {
+                symToByte[nInUse++] = i * 16 + j;
+              }
+            }
+          }
+        }
+
+        const alphaSize = nInUse + 2;
+        const nGroups = readBits(3);
+        const nSelectors = readBits(15);
+        if (nGroups < 2 || nGroups > 6 || nSelectors < 1 || nSelectors > 18002) {
+          return null;
+        }
+
+        // Read selectors (unary 0s followed by 1)
+        const selectorMtf = new Uint8Array(nSelectors);
+        for (let i = 0; i < nSelectors; i++) {
+          let j = 0;
+          while (readBit() === 1) {
+            j++;
+            if (j > nGroups) {
+              return null;
+            }
+          }
+          selectorMtf[i] = j;
+        }
+
+        // Undo MTF on selectors
+        const posArr = new Uint8Array(nGroups);
+        for (let i = 0; i < nGroups; i++) {
+          posArr[i] = i;
+        }
+        const selectors = new Uint8Array(nSelectors);
+        for (let i = 0; i < nSelectors; i++) {
+          let v = selectorMtf[i];
+          const tmp = posArr[v];
+          while (v > 0) {
+            posArr[v] = posArr[v - 1];
+            v--;
+          }
+          posArr[0] = tmp;
+          selectors[i] = tmp;
+        }
+
+        // Read Huffman code lengths per group
+        const lens = [];
+        for (let t = 0; t < nGroups; t++) {
+          let curr = readBits(5);
+          const groupLens = new Uint8Array(alphaSize);
+          for (let i = 0; i < alphaSize; i++) {
+            while (true) {
+              if (curr < 1 || curr > 20) {
+                return null;
+              }
+              if (readBit() === 0) {
+                break;
+              }
+              if (readBit() === 0) {
+                curr++;
+              } else {
+                curr--;
+              }
+            }
+            groupLens[i] = curr;
+          }
+          lens.push(groupLens);
+        }
+
+        // Build fast lookup tables per Huffman table
+        const tables = lens.map(function (groupLens) {
+          return buildHuffmanLookup(groupLens, alphaSize);
+        });
+
+        const maxBlockLen = blockSize100k * 100000;
+        const bwtBlock = new Uint8Array(maxBlockLen);
+        let nBlock = 0;
+        let groupNo = 0;
+        let groupPos = 50;
+        let currTable = tables[selectors[0]];
+
+        const EOB = nInUse + 1;
+
+        while (true) {
+          if (groupPos === 0) {
+            groupNo++;
+            if (groupNo >= nSelectors) {
+              return null;
+            }
+            groupPos = 50;
+            currTable = tables[selectors[groupNo]];
+          }
+          groupPos--;
+
+          const sym = decodeHuffmanSymbol(currTable, readBit, readBits);
+          if (sym === EOB) {
+            break;
+          }
+
+          if (sym === 0 || sym === 1) {
+            // RLE0 / RLE1 run length decoding
+            let run = 0;
+            let shift = 0;
+            let s = sym;
+            while (s === 0 || s === 1) {
+              run += (s + 1) << shift;
+              shift++;
+              if (groupPos === 0) {
+                groupNo++;
+                if (groupNo >= nSelectors) {
+                  return null;
+                }
+                groupPos = 50;
+                currTable = tables[selectors[groupNo]];
+              }
+              groupPos--;
+              s = decodeHuffmanSymbol(currTable, readBit, readBits);
+            }
+
+            const ch = symToByte[0];
+            for (let r = 0; r < run; r++) {
+              if (nBlock >= maxBlockLen) {
+                return null;
+              }
+              bwtBlock[nBlock++] = ch;
+            }
+
+            // Process the non-run symbol `s` that terminated the run
+            if (s === EOB) {
+              break;
+            }
+            const mtfIdx = s - 1;
+            const byteVal = symToByte[mtfIdx];
+            for (let k = mtfIdx; k > 0; k--) {
+              symToByte[k] = symToByte[k - 1];
+            }
+            symToByte[0] = byteVal;
+            if (nBlock >= maxBlockLen) {
+              return null;
+            }
+            bwtBlock[nBlock++] = byteVal;
+          } else {
+            const mtfIdx = sym - 1;
+            const byteVal = symToByte[mtfIdx];
+            for (let k = mtfIdx; k > 0; k--) {
+              symToByte[k] = symToByte[k - 1];
+            }
+            symToByte[0] = byteVal;
+            if (nBlock >= maxBlockLen) {
+              return null;
+            }
+            bwtBlock[nBlock++] = byteVal;
+          }
+        }
+
+        if (origPtr < 0 || origPtr >= nBlock) {
+          return null;
+        }
+
+        // Inverse BWT
+        const cftab = new Int32Array(257);
+        for (let i = 0; i < nBlock; i++) {
+          cftab[bwtBlock[i] + 1]++;
+        }
+        for (let i = 1; i <= 256; i++) {
+          cftab[i] += cftab[i - 1];
+        }
+
+        const tt = new Int32Array(nBlock);
+        const cftabCopy = new Int32Array(cftab);
+        for (let i = 0; i < nBlock; i++) {
+          const uc = bwtBlock[i];
+          tt[cftabCopy[uc]++] = i;
+        }
+
+        // Undo BWT + RLE1 (4 identical bytes followed by repeat count)
+        const unbwt = new Uint8Array(nBlock);
+        let tPos = tt[origPtr];
+        for (let i = nBlock - 1; i >= 0; i--) {
+          unbwt[i] = bwtBlock[tPos];
+          tPos = tt[tPos];
+        }
+
+        const rleOut = [];
+        let idx = 0;
+        while (idx < nBlock) {
+          const b0 = unbwt[idx];
+          if (
+            idx + 3 < nBlock &&
+            unbwt[idx + 1] === b0 &&
+            unbwt[idx + 2] === b0 &&
+            unbwt[idx + 3] === b0
+          ) {
+            const repeatCount = idx + 4 < nBlock ? unbwt[idx + 4] : 0;
+            for (let k = 0; k < 4 + repeatCount; k++) {
+              rleOut.push(b0);
+            }
+            idx += 5;
+          } else {
+            rleOut.push(b0);
+            idx++;
+          }
+        }
+
+        // Rewind byteIdx if unread bits exist in bitBuf
+        const wholeUnreadBytes = Math.floor(bitCount / 8);
+        const nextBytePos = byteIdx - wholeUnreadBytes;
+
+        return {
+          data: new Uint8Array(rleOut),
+          nextBytePos: nextBytePos
+        };
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function buildHuffmanLookup(lengths, alphaSize) {
+      let minLen = 25;
+      let maxLen = 0;
+      for (let i = 0; i < alphaSize; i++) {
+        const l = lengths[i];
+        if (l > 0) {
+          if (l < minLen) minLen = l;
+          if (l > maxLen) maxLen = l;
+        }
+      }
+
+      const count = new Int32Array(maxLen + 2);
+      for (let i = 0; i < alphaSize; i++) {
+        if (lengths[i] > 0) {
+          count[lengths[i]]++;
+        }
+      }
+
+      const base = new Int32Array(maxLen + 2);
+      const limit = new Int32Array(maxLen + 2);
+      let code = 0;
+      for (let i = minLen; i <= maxLen; i++) {
+        base[i] = code - count[i];
+        code += count[i];
+        limit[i] = code - 1;
+        code <<= 1;
+      }
+
+      const perm = new Int32Array(alphaSize);
+      let pIdx = 0;
+      for (let len = minLen; len <= maxLen; len++) {
+        for (let sym = 0; sym < alphaSize; sym++) {
+          if (lengths[sym] === len) {
+            perm[pIdx++] = sym;
+          }
+        }
+      }
+
+      return {
+        minLen: minLen,
+        maxLen: maxLen,
+        base: base,
+        limit: limit,
+        perm: perm
+      };
+    }
+
+    function decodeHuffmanSymbol(tbl, readBit, readBits) {
+      let len = tbl.minLen;
+      let code = readBits(len);
+      while (len <= tbl.maxLen) {
+        if (code <= tbl.limit[len]) {
+          const idx = tbl.base[len] + code;
+          return tbl.perm[idx];
+        }
+        len++;
+        code = (code << 1) | readBit();
+      }
+      throw new Error("Invalid Huffman code");
+    }
+
+    /* =========================================================================
+       NEXRAD LEVEL II MESSAGE TYPE 31 PARSER (Sweeps, Radials, REF/VEL/SW/CC)
+       ========================================================================= */
+    function parseNexradLevel2Buffer(arrayBuffer) {
+      const bytes = new Uint8Array(arrayBuffer);
+      if (bytes.length < 36) {
+        return null;
+      }
+
+      // 24-byte Archive2 volume header + optional 12-byte CTM header before compressed messages
+      let payloadStart = 24;
+      const decompressed = bzip2DecompressStream(bytes.subarray(payloadStart));
+      if (!decompressed || decompressed.length < 32) {
+        return null;
+      }
+
+      const view = new DataView(
+        decompressed.buffer,
+        decompressed.byteOffset,
+        decompressed.byteLength
+      );
+
+      const sweepsMap = new Map();
+      let offset = 0;
+
+      while (offset + 28 <= decompressed.length) {
+        // NEXRAD Level II message header:
+        // bytes 12..13: message size in halfwords (16-bit words)
+        // byte 15: message type
+        const msgSizeWords = view.getUint16(offset + 12, false);
+        const msgType = decompressed[offset + 15];
+        const msgByteLen = msgSizeWords * 2;
+
+        if (msgByteLen < 24 || offset + msgByteLen > decompressed.length) {
+          break;
+        }
+
+        if (msgType === 31 && offset + 64 <= decompressed.length) {
+          // Digital Radar Data (Message Type 31)
+          // Header starts at offset + 16:
+          // +0..3 (4B): radar ID
+          // +4..7 (4B): collection ms
+          // +8..9 (2B): Julian date
+          // +10..11 (2B): azimuth angle (IEEE float32)
+          const azimuth = view.getFloat32(offset + 26, false);
+          // +16..17 (2B): azimuth resolution spacing (1 = 0.5 deg, 2 = 1.0 deg)
+          const azSpacingCode = view.getUint16(offset + 32, false);
+          const azWidthDeg = azSpacingCode === 1 ? 0.5 : 1.0;
+          // +19 (1B): elevation number
+          const elevNum = decompressed[offset + 35];
+          // +24..27 (4B): elevation angle (IEEE float32)
+          const elevAngle = view.getFloat32(offset + 40, false);
+          // +30..31 (2B): data block count
+          const blockCount = view.getUint16(offset + 46, false);
+
+          const moments = {};
+          const ptrListOffset = offset + 48;
+
+          for (let b = 0; b < blockCount; b++) {
+            if (ptrListOffset + b * 4 + 4 > offset + msgByteLen) {
+              break;
+            }
+            const blockRelOffset = view.getUint32(ptrListOffset + b * 4, false);
+            const blockAbs = offset + 16 + blockRelOffset;
+
+            if (blockAbs + 28 > decompressed.length) {
+              continue;
+            }
+
+            const blockTypeChar = String.fromCharCode(decompressed[blockAbs]);
+            const dataName = String.fromCharCode(
+              decompressed[blockAbs + 1],
+              decompressed[blockAbs + 2],
+              decompressed[blockAbs + 3]
+            ).trim();
+
+            if (blockTypeChar === "D") {
+              const gateCount = view.getUint16(blockAbs + 8, false);
+              const firstGateKm = view.getUint16(blockAbs + 10, false) / 1000.0;
+              const gateIntervalKm = view.getUint16(blockAbs + 12, false) / 1000.0;
+              const wordSizeBits = decompressed[blockAbs + 19];
+              const scale = view.getFloat32(blockAbs + 20, false);
+              const offsetVal = view.getFloat32(blockAbs + 24, false);
+
+              const values = new Float32Array(gateCount);
+              const payloadStartGate = blockAbs + 28;
+
+              if (wordSizeBits === 8) {
+                for (let g = 0; g < gateCount && payloadStartGate + g < decompressed.length; g++) {
+                  const raw = decompressed[payloadStartGate + g];
+                  if (raw <= 1) {
+                    values[g] = NaN;
+                  } else {
+                    values[g] = (raw - offsetVal) / scale;
+                  }
+                }
+              } else if (wordSizeBits === 16) {
+                for (let g = 0; g < gateCount && payloadStartGate + g * 2 + 1 < decompressed.length; g++) {
+                  const raw16 = view.getUint16(payloadStartGate + g * 2, false);
+                  if (raw16 <= 1) {
+                    values[g] = NaN;
+                  } else {
+                    values[g] = (raw16 - offsetVal) / scale;
+                  }
+                }
+              }
+
+              moments[dataName] = {
+                gateCount: gateCount,
+                firstGateKm: firstGateKm,
+                gateIntervalKm: gateIntervalKm,
+                values: values
+              };
+            }
+          }
+
+          if (!sweepsMap.has(elevNum)) {
+            sweepsMap.set(elevNum, {
+              elevNum: elevNum,
+              elevAngle: isFinite(elevAngle) ? elevAngle : 0.5,
+              radials: []
+            });
+          }
+
+          sweepsMap.get(elevNum).radials.push({
+            azimuth: azimuth,
+            azWidthDeg: azWidthDeg,
+            moments: moments
+          });
+        }
+
+        offset += msgByteLen;
+      }
+
+      if (sweepsMap.size === 0) {
+        return null;
+      }
+
+      return { sweeps: sweepsMap };
+    }
+
+    function pickSweepForSelectedElevation(volume) {
+      if (!volume || !volume.sweeps || volume.sweeps.size === 0) {
+        return null;
+      }
+
+      const targetDeg = selectedElevation ? selectedElevation.deg : 0.5;
+      let bestSweep = null;
+      let bestDiff = Infinity;
+
+      volume.sweeps.forEach(function (sweep) {
+        const diff = Math.abs(sweep.elevAngle - targetDeg);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestSweep = sweep;
+        }
+      });
+
+      return bestSweep;
+    }
+
+    /* =========================================================================
+       COLOR TABLES & CANVAS POLAR SWEEP RENDERER
+       ========================================================================= */
+    function getMomentColor(prodKey, val) {
+      if (!isFinite(val)) {
+        return null;
+      }
+
+      if (prodKey === "ref") {
+        if (val < 5) return null;
+        if (val < 15) return "rgba(0, 236, 236, 0.65)";
+        if (val < 25) return "rgba(1, 160, 246, 0.72)";
+        if (val < 35) return "rgba(0, 255, 0, 0.75)";
+        if (val < 45) return "rgba(255, 255, 0, 0.80)";
+        if (val < 55) return "rgba(255, 144, 0, 0.85)";
+        if (val < 65) return "rgba(214, 0, 0, 0.90)";
+        return "rgba(255, 0, 255, 0.92)";
+      }
+
+      if (prodKey === "vel") {
+        // m/s radial velocity
+        if (val < -25) return "rgba(0, 255, 255, 0.82)";
+        if (val < -10) return "rgba(0, 128, 255, 0.78)";
+        if (val < -2) return "rgba(0, 200, 90, 0.70)";
+        if (val <= 2) return "rgba(140, 140, 140, 0.35)";
+        if (val <= 10) return "rgba(255, 140, 140, 0.70)";
+        if (val <= 25) return "rgba(255, 40, 40, 0.80)";
+        return "rgba(255, 0, 220, 0.88)";
+      }
+
+      if (prodKey === "sw") {
+        // m/s spectrum width
+        if (val < 2) return "rgba(56, 189, 248, 0.55)";
+        if (val < 5) return "rgba(34, 197, 94, 0.72)";
+        if (val < 9) return "rgba(250, 204, 21, 0.82)";
+        return "rgba(244, 63, 94, 0.88)";
+      }
+
+      // Correlation coefficient (RHOHV: ~0.2 to 1.05)
+      if (val < 0.5) return "rgba(239, 68, 68, 0.85)";
+      if (val < 0.75) return "rgba(245, 158, 11, 0.80)";
+      if (val < 0.92) return "rgba(56, 189, 248, 0.72)";
+      return "rgba(34, 197, 94, 0.65)";
+    }
+
+    function getMomentFieldName(prodKey) {
+      if (prodKey === "vel") return "VEL";
+      if (prodKey === "sw") return "SW";
+      if (prodKey === "cc") return "RHO";
+      return "REF";
+    }
+
+    function destinationLatLon(latDeg, lonDeg, bearingDeg, distanceKm) {
+      const R = 6371.0;
+      const brng = (bearingDeg * Math.PI) / 180;
+      const lat1 = (latDeg * Math.PI) / 180;
+      const lon1 = (lonDeg * Math.PI) / 180;
+      const dDivR = distanceKm / R;
+
+      const lat2 = Math.asin(
+        Math.sin(lat1) * Math.cos(dDivR) +
+        Math.cos(lat1) * Math.sin(dDivR) * Math.cos(brng)
+      );
+      const lon2 =
+        lon1 +
+        Math.atan2(
+          Math.sin(brng) * Math.sin(dDivR) * Math.cos(lat1),
+          Math.cos(dDivR) - Math.sin(lat1) * Math.sin(lat2)
+        );
+
+      return {
+        lat: (lat2 * 180) / Math.PI,
+        lon: (lon2 * 180) / Math.PI
+      };
+    }
+
+    function clearCanvasAndShowFallback() {
+      const canvas = document.getElementById("level2Canvas");
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+
       const radarObj = getActiveRadarObj();
       const ridgeProd = getRidgeProductCode();
       const activeFrame = scanFrames[currentFrameIndex] || null;
 
-      if (!map || typeof L.tileLayer.wms !== "function") {
+      if (map && typeof L.tileLayer.wms === "function") {
+        let wmsUrl =
+          "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/ridge.cgi?sector=" +
+          encodeURIComponent(radarObj.sector) +
+          "&prod=" +
+          encodeURIComponent(ridgeProd);
+
+        if (activeFrame && activeFrame.timestamp) {
+          wmsUrl += "&timestamp=" + encodeURIComponent(activeFrame.timestamp);
+        }
+
+        if (!fallbackWmsLayer) {
+          fallbackWmsLayer = L.tileLayer.wms(wmsUrl, {
+            layers: "single",
+            format: "image/png",
+            transparent: true,
+            opacity: 0.72,
+            attribution: "NEXRAD / Iowa Environmental Mesonet (IEM)",
+            _t: Date.now()
+          });
+          fallbackWmsLayer.addTo(map);
+        } else {
+          fallbackWmsLayer.setUrl(wmsUrl, false);
+          fallbackWmsLayer.setParams({ _t: Date.now() }, false);
+          if (!map.hasLayer(fallbackWmsLayer)) {
+            fallbackWmsLayer.addTo(map);
+          }
+        }
+      }
+    }
+
+    function hideFallbackWmsLayer() {
+      if (map && fallbackWmsLayer && map.hasLayer(fallbackWmsLayer)) {
+        map.removeLayer(fallbackWmsLayer);
+      }
+    }
+
+    function renderDecodedSweepToCanvas() {
+      const canvas = document.getElementById("level2Canvas");
+      const statusEl = document.getElementById("radarFeedStatus");
+      const radarObj = getActiveRadarObj();
+
+      if (!canvas || !map) {
         return;
       }
 
-      let wmsUrl =
-        "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/ridge.cgi?sector=" +
-        encodeURIComponent(radarObj.sector) +
-        "&prod=" +
-        encodeURIComponent(ridgeProd);
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const targetW = Math.max(1, Math.floor(rect.width * dpr));
+      const targetH = Math.max(1, Math.floor(rect.height * dpr));
 
-      if (activeFrame && activeFrame.timestamp) {
-        wmsUrl += "&timestamp=" + encodeURIComponent(activeFrame.timestamp);
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
       }
 
-      if (!activeRadarLayer) {
-        activeRadarLayer = L.tileLayer.wms(wmsUrl, {
-          layers: "single",
-          format: "image/png",
-          transparent: true,
-          opacity: 0.72,
-          attribution: "NEXRAD / Iowa Environmental Mesonet (IEM)",
-          _t: Date.now()
-        });
-        activeRadarLayer.addTo(map);
-      } else {
-        activeRadarLayer.setUrl(wmsUrl, false);
-        activeRadarLayer.setParams({ _t: Date.now() }, false);
-        if (!map.hasLayer(activeRadarLayer)) {
-          activeRadarLayer.addTo(map);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        return;
+      }
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      const sweep = pickSweepForSelectedElevation(currentDecodedVolume);
+      if (!sweep || !sweep.radials || sweep.radials.length === 0) {
+        clearCanvasAndShowFallback();
+        if (statusEl) {
+          statusEl.textContent =
+            radarObj.id + " • Tilt " + selectedElevation.angle + " • Fallback WMS";
+        }
+        return;
+      }
+
+      const momentKey = getMomentFieldName(selectedProductKey);
+      let hasAnyMoment = false;
+      for (let i = 0; i < sweep.radials.length; i++) {
+        if (sweep.radials[i].moments && sweep.radials[i].moments[momentKey]) {
+          hasAnyMoment = true;
+          break;
+        }
+      }
+
+      if (!hasAnyMoment) {
+        clearCanvasAndShowFallback();
+        if (statusEl) {
+          statusEl.textContent =
+            radarObj.id + " • No " + momentKey + " sweep • Fallback WMS";
+        }
+        return;
+      }
+
+      hideFallbackWmsLayer();
+
+      const centerPt = map.latLngToContainerPoint([radarObj.lat, radarObj.lon]);
+
+      for (let r = 0; r < sweep.radials.length; r++) {
+        const radial = sweep.radials[r];
+        const mData = radial.moments ? radial.moments[momentKey] : null;
+        if (!mData || !mData.values) {
+          continue;
+        }
+
+        const azStart = radial.azimuth - radial.azWidthDeg * 0.5;
+        const azEnd = radial.azimuth + radial.azWidthDeg * 0.5;
+        const rad1 = ((azStart - 90) * Math.PI) / 180;
+        const rad2 = ((azEnd - 90) * Math.PI) / 180;
+
+        // Estimate pixels-per-km scale at radar location for fast gate rendering
+        const refOuter = destinationLatLon(radarObj.lat, radarObj.lon, radial.azimuth, 100);
+        const outerPt = map.latLngToContainerPoint([refOuter.lat, refOuter.lon]);
+        const pxPerKm = Math.hypot(outerPt.x - centerPt.x, outerPt.y - centerPt.y) / 100.0;
+
+        let g = 0;
+        while (g < mData.gateCount) {
+          const val = mData.values[g];
+          const color = getMomentColor(selectedProductKey, val);
+          if (!color) {
+            g++;
+            continue;
+          }
+
+          // Merge consecutive gates with the same color bucket to reduce draw calls
+          let runEnd = g + 1;
+          while (runEnd < mData.gateCount) {
+            const nextColor = getMomentColor(selectedProductKey, mData.values[runEnd]);
+            if (nextColor !== color) {
+              break;
+            }
+            runEnd++;
+          }
+
+          const rInnerPx = (mData.firstGateKm + g * mData.gateIntervalKm) * pxPerKm;
+          const rOuterPx = (mData.firstGateKm + runEnd * mData.gateIntervalKm) * pxPerKm;
+
+          ctx.beginPath();
+          ctx.arc(centerPt.x, centerPt.y, rOuterPx, rad1, rad2, false);
+          ctx.arc(centerPt.x, centerPt.y, Math.max(0, rInnerPx), rad2, rad1, true);
+          ctx.closePath();
+          ctx.fillStyle = color;
+          ctx.fill();
+
+          g = runEnd;
         }
       }
 
       if (statusEl) {
         statusEl.textContent =
-          radarObj.id + " • Tilt " + selectedElevation.angle + " (" + ridgeProd + ")";
+          radarObj.id +
+          " • L2 " +
+          momentKey +
+          " • " +
+          sweep.elevAngle.toFixed(1) +
+          "°";
       }
+    }
+
+    function loadLevel2FrameIntoView() {
+      const activeFrame = scanFrames[currentFrameIndex] || null;
+      const statusEl = document.getElementById("radarFeedStatus");
+      const radarObj = getActiveRadarObj();
+
+      if (!activeFrame || !activeFrame.s3Key) {
+        currentDecodedVolume = null;
+        clearCanvasAndShowFallback();
+        return;
+      }
+
+      if (decodedVolumeCache.has(activeFrame.s3Key)) {
+        currentDecodedVolume = decodedVolumeCache.get(activeFrame.s3Key);
+        renderDecodedSweepToCanvas();
+        return;
+      }
+
+      if (statusEl) {
+        statusEl.textContent = radarObj.id + " • Decoding L2...";
+      }
+
+      const token = ++fetchToken;
+      const fileUrl = S3_BUCKET_URL + "/" + encodeURI(activeFrame.s3Key);
+
+      fetch(fileUrl)
+        .then(function (res) {
+          if (!res.ok) {
+            throw new Error("HTTP " + res.status);
+          }
+          return res.arrayBuffer();
+        })
+        .then(function (buf) {
+          if (token !== fetchToken) {
+            return;
+          }
+          const parsed = parseNexradLevel2Buffer(buf);
+          if (parsed) {
+            decodedVolumeCache.set(activeFrame.s3Key, parsed);
+            currentDecodedVolume = parsed;
+            renderDecodedSweepToCanvas();
+          } else {
+            currentDecodedVolume = null;
+            clearCanvasAndShowFallback();
+            if (statusEl) {
+              statusEl.textContent = radarObj.id + " • L2 parse fallback";
+            }
+          }
+        })
+        .catch(function () {
+          if (token !== fetchToken) {
+            return;
+          }
+          currentDecodedVolume = null;
+          clearCanvasAndShowFallback();
+          if (statusEl) {
+            statusEl.textContent = radarObj.id + " • WMS fallback";
+          }
+        });
     }
 
     function renderPlayerAndElevations() {
@@ -963,12 +1756,24 @@
           btn.addEventListener("click", function () {
             selectedElevation = elev;
             renderPlayerAndElevations();
-            updateRadarMapLayer();
+            if (currentDecodedVolume) {
+              renderDecodedSweepToCanvas();
+            } else {
+              loadLevel2FrameIntoView();
+            }
           });
 
           elevGrid.appendChild(btn);
         });
       }
+    }
+
+    function parseNexradFilenameToTimestamp(filename) {
+      const match = filename.match(/^[A-Z]{4}(\d{8})_(\d{4})/);
+      if (!match) {
+        return null;
+      }
+      return match[1] + match[2];
     }
 
     function fetchRecentScansForSite(preserveLatest) {
@@ -979,8 +1784,7 @@
       const dd = String(now.getUTCDate()).padStart(2, "0");
       const prefix = yyyy + "/" + mm + "/" + dd + "/" + radarObj.id + "/";
       const listUrl =
-        "https://unidata-nexrad-level2.s3.amazonaws.com/?list-type=2&prefix=" +
-        encodeURIComponent(prefix);
+        S3_BUCKET_URL + "/?list-type=2&prefix=" + encodeURIComponent(prefix);
 
       fetch(listUrl)
         .then(function (res) {
@@ -1003,6 +1807,7 @@
             if (ts) {
               parsed.push({
                 filename: filename,
+                s3Key: fullKey,
                 timestamp: ts
               });
             }
@@ -1012,7 +1817,6 @@
             const wasAtLatest =
               scanFrames.length === 0 || currentFrameIndex === scanFrames.length - 1;
 
-            // Keep only the newest MAX_LOOP_FRAMES scans; oldest scans drop out
             scanFrames = parsed.slice(-MAX_LOOP_FRAMES);
 
             if (preserveLatest || wasAtLatest || currentFrameIndex >= scanFrames.length) {
@@ -1025,6 +1829,7 @@
             scanFrames = [
               {
                 filename: radarObj.id + fallbackStamp + "_V06",
+                s3Key: null,
                 timestamp: null
               }
             ];
@@ -1032,7 +1837,7 @@
           }
 
           renderPlayerAndElevations();
-          updateRadarMapLayer();
+          loadLevel2FrameIntoView();
         })
         .catch(function () {
           const fallbackStamp = yyyy + mm + dd + "_" +
@@ -1041,12 +1846,13 @@
           scanFrames = [
             {
               filename: radarObj.id + fallbackStamp + "_V06",
+              s3Key: null,
               timestamp: null
             }
           ];
           currentFrameIndex = 0;
           renderPlayerAndElevations();
-          updateRadarMapLayer();
+          loadLevel2FrameIntoView();
         });
     }
 
@@ -1079,7 +1885,7 @@
         }
         currentFrameIndex = (currentFrameIndex + 1) % scanFrames.length;
         renderPlayerAndElevations();
-        updateRadarMapLayer();
+        loadLevel2FrameIntoView();
       }, 900);
     }
 
@@ -1169,7 +1975,7 @@
         stopLoopPlayback();
         currentFrameIndex = (currentFrameIndex - 1 + scanFrames.length) % scanFrames.length;
         renderPlayerAndElevations();
-        updateRadarMapLayer();
+        loadLevel2FrameIntoView();
       });
     }
 
@@ -1181,7 +1987,7 @@
         stopLoopPlayback();
         currentFrameIndex = (currentFrameIndex + 1) % scanFrames.length;
         renderPlayerAndElevations();
-        updateRadarMapLayer();
+        loadLevel2FrameIntoView();
       });
     }
 
@@ -1265,7 +2071,11 @@
         });
         btn.classList.add("active");
         selectedProductKey = btn.getAttribute("data-prod") || "ref";
-        updateRadarMapLayer();
+        if (currentDecodedVolume) {
+          renderDecodedSweepToCanvas();
+        } else {
+          loadLevel2FrameIntoView();
+        }
       });
     });
 
@@ -1296,6 +2106,12 @@
       }
       applyMapStyle(savedStyle);
 
+      map.on("move zoom resize viewreset", function () {
+        if (currentDecodedVolume) {
+          renderDecodedSweepToCanvas();
+        }
+      });
+
       fetchRecentScansForSite(true);
       setInterval(function () {
         fetchRecentScansForSite(false);
@@ -1319,6 +2135,7 @@
           selectedRadarId = radar.id;
           scanFrames = [];
           currentFrameIndex = 0;
+          currentDecodedVolume = null;
           refreshMapSiteNames();
           fetchRecentScansForSite(true);
         });
