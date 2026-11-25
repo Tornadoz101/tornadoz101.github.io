@@ -122,11 +122,46 @@
     }
 
     .radar-slot {
-      min-height: 32px;
+      min-height: 36px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--panel-text);
+      line-height: 1.3;
     }
 
     .angle-slot {
-      min-height: 48px;
+      min-height: 56px;
+    }
+
+    .sidebar-label {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--muted-text);
+      margin-bottom: 5px;
+    }
+
+    .scan-level-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .scan-level-btn {
+      padding: 3px 6px;
+      font-size: 11px;
+      font-weight: 800;
+      border: 2px solid var(--input-border);
+      background-color: var(--btn-bg);
+      color: var(--btn-text);
+      cursor: pointer;
+    }
+
+    .scan-level-btn.active {
+      border-color: #1d4ed8;
+      background-color: #1d4ed8;
+      color: #ffffff;
     }
 
     .product-buttons {
@@ -424,8 +459,11 @@
 
       <div class="left-body">
         <div class="empty-slots">
-          <div class="radar-slot" id="slot-radar-name"></div>
-          <div class="angle-slot" id="slot-site-angles"></div>
+          <div class="radar-slot" id="slot-radar-name">No site selected</div>
+          <div class="angle-slot" id="slot-site-angles">
+            <div class="sidebar-label">Scan Level</div>
+            <div class="scan-level-list" id="scanLevelList"></div>
+          </div>
         </div>
 
         <div class="product-buttons">
@@ -512,7 +550,10 @@
       { id: "KFDR", name: "Frederick, OK", lat: 34.3622, lon: -98.9766 }
     ];
 
+    const SCAN_LEVELS = ["0.5°", "0.9°", "1.3°", "1.8°", "2.4°", "3.1°"];
+
     let selectedRadarId = null;
+    let selectedScanLevel = SCAN_LEVELS[0];
     let siteNamesVisible = true;
     const radarNameLayers = {};
 
@@ -628,6 +669,40 @@
       });
     }
 
+    function renderSidebarSiteAndLevel() {
+      const nameSlot = document.getElementById("slot-radar-name");
+      const levelList = document.getElementById("scanLevelList");
+
+      const radarObj = OK_PRIMARY_RADARS.find(function (r) {
+        return r.id === selectedRadarId;
+      }) || null;
+
+      if (nameSlot) {
+        if (radarObj) {
+          nameSlot.innerHTML =
+            "<strong>" + radarObj.id + "</strong><br>" +
+            "<span style='color:var(--muted-text);font-size:11px;'>" + radarObj.name + "</span>";
+        } else {
+          nameSlot.textContent = "No site selected";
+        }
+      }
+
+      if (levelList) {
+        levelList.innerHTML = "";
+        SCAN_LEVELS.forEach(function (lvl) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "scan-level-btn" + (lvl === selectedScanLevel ? " active" : "");
+          btn.textContent = lvl;
+          btn.addEventListener("click", function () {
+            selectedScanLevel = lvl;
+            renderSidebarSiteAndLevel();
+          });
+          levelList.appendChild(btn);
+        });
+      }
+    }
+
     function refreshMapSiteNames() {
       if (!map) {
         return;
@@ -652,6 +727,8 @@
           map.removeLayer(layer);
         }
       });
+
+      renderSidebarSiteAndLevel();
     }
 
     function applyMapStyle(styleName) {
@@ -696,6 +773,8 @@
         // Ignore storage errors
       }
     }
+
+    renderSidebarSiteAndLevel();
 
     const btnSiteNames = document.getElementById("btnSiteNames");
     if (btnSiteNames) {
