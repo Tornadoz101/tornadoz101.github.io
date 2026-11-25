@@ -25,6 +25,8 @@
       --popup-bg: #1e293b;
       --popup-text: #ffffff;
       --disclaimer-text: #ef4444;
+      --accent-blue: #38bdf8;
+      --elev-active-bg: rgba(56, 189, 248, 0.18);
     }
 
     body.light-mode {
@@ -43,6 +45,8 @@
       --popup-bg: #ffffff;
       --popup-text: #111111;
       --disclaimer-text: #dc2626;
+      --accent-blue: #0284c7;
+      --elev-active-bg: #f1f5f9;
     }
 
     * {
@@ -70,7 +74,7 @@
 
     /* LEFT COLUMN */
     .left-column {
-      width: 210px;
+      width: 235px;
       height: 100%;
       display: flex;
       flex-direction: column;
@@ -121,58 +125,167 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 8px 6px;
+      padding: 8px 8px;
       min-height: 0;
+      overflow-y: auto;
     }
 
     .empty-slots {
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      padding: 4px;
+      gap: 10px;
     }
 
-    .radar-slot {
-      min-height: 36px;
-      font-size: 12px;
+    /* FILE / FRAME PLAYER CARD */
+    .player-card {
+      border-bottom: 1px solid var(--input-border);
+      padding-bottom: 8px;
+    }
+
+    .player-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
       font-weight: 700;
-      color: var(--panel-text);
-      line-height: 1.3;
-    }
-
-    .angle-slot {
-      min-height: 56px;
-    }
-
-    .sidebar-label {
-      font-size: 10px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
       color: var(--muted-text);
+      padding-bottom: 3px;
+      border-bottom: 1px solid var(--input-border);
       margin-bottom: 5px;
     }
 
-    .scan-level-list {
+    .player-info-row {
       display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
+      justify-content: space-between;
+      align-items: center;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--panel-text);
+      margin-bottom: 8px;
     }
 
-    .scan-level-btn {
-      padding: 3px 6px;
+    .player-file-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 165px;
+    }
+
+    .player-frame-count {
+      color: var(--muted-text);
+      flex-shrink: 0;
+    }
+
+    .player-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+    }
+
+    .step-btn {
+      background: none;
+      border: none;
+      color: var(--accent-blue);
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      padding: 2px 6px;
+      line-height: 1;
+    }
+
+    .step-btn:hover {
+      opacity: 0.8;
+    }
+
+    .play-circle-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid var(--accent-blue);
+      background: transparent;
+      color: var(--accent-blue);
       font-size: 11px;
       font-weight: 800;
-      border: 2px solid var(--input-border);
-      background-color: var(--btn-bg);
-      color: var(--btn-text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
+      padding: 0;
     }
 
-    .scan-level-btn.active {
-      border-color: #1d4ed8;
-      background-color: #1d4ed8;
-      color: #ffffff;
+    .play-circle-btn.playing {
+      background-color: var(--accent-blue);
+      color: #0f172a;
+    }
+
+    /* ELEVATIONS GRID */
+    .elev-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .elev-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--panel-text);
+    }
+
+    .load-loop-btn {
+      background: none;
+      border: none;
+      color: var(--accent-blue);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .load-loop-btn:hover {
+      text-decoration: underline;
+    }
+
+    .elev-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px 4px;
+    }
+
+    .elev-item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--accent-blue);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .elev-item.active {
+      background-color: var(--elev-active-bg);
+    }
+
+    .elev-badge {
+      position: absolute;
+      top: 1px;
+      right: 4px;
+      font-size: 8.5px;
+      font-weight: 700;
+      color: var(--muted-text);
+      border: 1px solid var(--input-border);
+      background-color: var(--panel-bg);
+      border-radius: 3px;
+      padding: 0 3px;
+      line-height: 1.2;
     }
 
     .radar-status-note {
@@ -186,6 +299,7 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
+      margin-top: 8px;
     }
 
     .prod-btn {
@@ -480,12 +594,30 @@
 
       <div class="left-body">
         <div class="empty-slots">
-          <div class="radar-slot" id="slot-radar-name">No site selected</div>
-          <div class="angle-slot" id="slot-site-angles">
-            <div class="sidebar-label">Scan Level</div>
-            <div class="scan-level-list" id="scanLevelList"></div>
+          <div class="player-card">
+            <div class="player-header">
+              <span>File</span>
+              <span>Frame</span>
+            </div>
+            <div class="player-info-row">
+              <span class="player-file-name" id="scanFileName">Loading...</span>
+              <span class="player-frame-count" id="scanFrameCount">0/0</span>
+            </div>
+            <div class="player-controls">
+              <button type="button" class="step-btn" id="btnPrevFrame" title="Previous Scan">&lt;</button>
+              <button type="button" class="play-circle-btn" id="btnPlayLoop" title="Play / Pause Loop">&#9654;</button>
+              <button type="button" class="step-btn" id="btnNextFrame" title="Next Scan">&gt;</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="elev-section-header">
+              <span class="elev-title" id="elevHeaderTitle">KTLX elevations</span>
+              <button type="button" class="load-loop-btn" id="btnRefreshScans">Load Loop</button>
+            </div>
+            <div class="elev-grid" id="elevGrid"></div>
             <div class="radar-status-note" id="radarFeedStatus">
-              KTLX Single-Site Feed: Ready
+              KTLX • Tilt 0.5° • N0Q
             </div>
           </div>
         </div>
@@ -566,6 +698,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const CARTO_API_KEY = "cb1_5fjg_1_351c53d02c76f010f2762ee8";
+    const MAX_LOOP_FRAMES = 10;
 
     const OK_PRIMARY_RADARS = [
       { id: "KTLX", sector: "TLX", name: "Oklahoma City / Norman, OK", lat: 35.3334, lon: -97.2779 },
@@ -574,21 +707,56 @@
       { id: "KFDR", sector: "FDR", name: "Frederick, OK", lat: 34.3622, lon: -98.9766 }
     ];
 
-    const SCAN_LEVELS = ["0.5°", "0.9°", "1.3°", "1.8°", "2.4°", "3.1°"];
+    const ELEVATION_LEVELS = [
+      { angle: "0.5°", code: "0" },
+      { angle: "0.9°", code: "1" },
+      { angle: "1.3°", code: "2" },
+      { angle: "1.8°", code: "3" },
+      { angle: "2.4°", code: "0" },
+      { angle: "3.1°", code: "0" },
+      { angle: "4.0°", code: "0" },
+      { angle: "5.1°", code: "0" },
+      { angle: "6.4°", code: "0" }
+    ];
 
-    const PRODUCT_TO_RIDGE = {
-      ref: "N0Q",
-      vel: "N0U",
-      sw: "N0S",
-      cc: "N0C"
+    const PRODUCT_PREFIX = {
+      ref: "N",
+      vel: "N",
+      sw: "N",
+      cc: "N"
     };
 
-    let selectedRadarId = null;
-    let selectedScanLevel = SCAN_LEVELS[0];
+    const PRODUCT_SUFFIX = {
+      ref: "Q",
+      vel: "U",
+      sw: "S",
+      cc: "C"
+    };
+
+    let selectedRadarId = "KTLX";
+    let selectedElevation = ELEVATION_LEVELS[0];
     let selectedProductKey = "ref";
     let siteNamesVisible = true;
     const radarNameLayers = {};
-    let ktlxRadarLayer = null;
+    let activeRadarLayer = null;
+
+    let scanFrames = [];
+    let currentFrameIndex = 0;
+    let isPlaying = false;
+    let playTimer = null;
+
+    function getActiveRadarObj() {
+      return OK_PRIMARY_RADARS.find(function (r) {
+        return r.id === selectedRadarId;
+      }) || OK_PRIMARY_RADARS[0];
+    }
+
+    function getRidgeProductCode() {
+      const prefix = PRODUCT_PREFIX[selectedProductKey] || "N";
+      const suffix = PRODUCT_SUFFIX[selectedProductKey] || "Q";
+      const tiltCode = selectedElevation ? selectedElevation.code : "0";
+      return prefix + tiltCode + suffix;
+    }
 
     function applyThemeMode(themeName) {
       const isLight = themeName === "light";
@@ -702,20 +870,36 @@
       });
     }
 
-    function updateKTLXRadarOverlay() {
+    function parseNexradFilenameToTimestamp(filename) {
+      const match = filename.match(/^[A-Z]{4}(\d{8})_(\d{4})/);
+      if (!match) {
+        return null;
+      }
+      return match[1] + match[2];
+    }
+
+    function updateRadarMapLayer() {
       const statusEl = document.getElementById("radarFeedStatus");
-      const ridgeProd = PRODUCT_TO_RIDGE[selectedProductKey] || "N0Q";
+      const radarObj = getActiveRadarObj();
+      const ridgeProd = getRidgeProductCode();
+      const activeFrame = scanFrames[currentFrameIndex] || null;
 
       if (!map || typeof L.tileLayer.wms !== "function") {
         return;
       }
 
-      const wmsUrl =
-        "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/ridge.cgi?sector=TLX&prod=" +
+      let wmsUrl =
+        "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/ridge.cgi?sector=" +
+        encodeURIComponent(radarObj.sector) +
+        "&prod=" +
         encodeURIComponent(ridgeProd);
 
-      if (!ktlxRadarLayer) {
-        ktlxRadarLayer = L.tileLayer.wms(wmsUrl, {
+      if (activeFrame && activeFrame.timestamp) {
+        wmsUrl += "&timestamp=" + encodeURIComponent(activeFrame.timestamp);
+      }
+
+      if (!activeRadarLayer) {
+        activeRadarLayer = L.tileLayer.wms(wmsUrl, {
           layers: "single",
           format: "image/png",
           transparent: true,
@@ -723,54 +907,180 @@
           attribution: "NEXRAD / Iowa Environmental Mesonet (IEM)",
           _t: Date.now()
         });
-        ktlxRadarLayer.addTo(map);
+        activeRadarLayer.addTo(map);
       } else {
-        ktlxRadarLayer.setUrl(wmsUrl, false);
-        ktlxRadarLayer.setParams({ _t: Date.now() }, false);
-        if (!map.hasLayer(ktlxRadarLayer)) {
-          ktlxRadarLayer.addTo(map);
+        activeRadarLayer.setUrl(wmsUrl, false);
+        activeRadarLayer.setParams({ _t: Date.now() }, false);
+        if (!map.hasLayer(activeRadarLayer)) {
+          activeRadarLayer.addTo(map);
         }
       }
 
       if (statusEl) {
         statusEl.textContent =
-          "KTLX Only (" + ridgeProd + ") • Tilt " + selectedScanLevel;
+          radarObj.id + " • Tilt " + selectedElevation.angle + " (" + ridgeProd + ")";
       }
     }
 
-    function renderSidebarSiteAndLevel() {
-      const nameSlot = document.getElementById("slot-radar-name");
-      const levelList = document.getElementById("scanLevelList");
+    function renderPlayerAndElevations() {
+      const radarObj = getActiveRadarObj();
+      const fileEl = document.getElementById("scanFileName");
+      const countEl = document.getElementById("scanFrameCount");
+      const elevHeader = document.getElementById("elevHeaderTitle");
+      const elevGrid = document.getElementById("elevGrid");
 
-      const radarObj = OK_PRIMARY_RADARS.find(function (r) {
-        return r.id === selectedRadarId;
-      }) || null;
+      const activeFrame = scanFrames[currentFrameIndex] || null;
 
-      if (nameSlot) {
-        if (radarObj) {
-          nameSlot.innerHTML =
-            "<strong>" + radarObj.id + "</strong><br>" +
-            "<span style='color:var(--muted-text);font-size:11px;'>" + radarObj.name + "</span>";
+      if (fileEl) {
+        fileEl.textContent = activeFrame ? activeFrame.filename : "No scans loaded";
+      }
+
+      if (countEl) {
+        if (scanFrames.length > 0) {
+          countEl.textContent = (currentFrameIndex + 1) + "/" + scanFrames.length;
         } else {
-          nameSlot.textContent = "No site selected";
+          countEl.textContent = "0/0";
         }
       }
 
-      if (levelList) {
-        levelList.innerHTML = "";
-        SCAN_LEVELS.forEach(function (lvl) {
+      if (elevHeader) {
+        elevHeader.textContent = radarObj.id + " elevations";
+      }
+
+      if (elevGrid) {
+        elevGrid.innerHTML = "";
+        ELEVATION_LEVELS.forEach(function (elev) {
           const btn = document.createElement("button");
           btn.type = "button";
-          btn.className = "scan-level-btn" + (lvl === selectedScanLevel ? " active" : "");
-          btn.textContent = lvl;
+          btn.className =
+            "elev-item" + (elev.angle === selectedElevation.angle ? " active" : "");
+
+          const badgeCount = scanFrames.length > 0 ? scanFrames.length : 1;
+          btn.innerHTML =
+            "<span>" + elev.angle + "</span>" +
+            '<span class="elev-badge">' + badgeCount + "</span>";
+
           btn.addEventListener("click", function () {
-            selectedScanLevel = lvl;
-            renderSidebarSiteAndLevel();
-            updateKTLXRadarOverlay();
+            selectedElevation = elev;
+            renderPlayerAndElevations();
+            updateRadarMapLayer();
           });
-          levelList.appendChild(btn);
+
+          elevGrid.appendChild(btn);
         });
       }
+    }
+
+    function fetchRecentScansForSite(preserveLatest) {
+      const radarObj = getActiveRadarObj();
+      const now = new Date();
+      const yyyy = String(now.getUTCFullYear());
+      const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
+      const dd = String(now.getUTCDate()).padStart(2, "0");
+      const prefix = yyyy + "/" + mm + "/" + dd + "/" + radarObj.id + "/";
+      const listUrl =
+        "https://unidata-nexrad-level2.s3.amazonaws.com/?list-type=2&prefix=" +
+        encodeURIComponent(prefix);
+
+      fetch(listUrl)
+        .then(function (res) {
+          return res.text();
+        })
+        .then(function (xmlText) {
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(xmlText, "application/xml");
+          const keyNodes = xmlDoc.getElementsByTagName("Key");
+          const parsed = [];
+
+          for (let i = 0; i < keyNodes.length; i++) {
+            const fullKey = keyNodes[i].textContent || "";
+            const parts = fullKey.split("/");
+            const filename = parts[parts.length - 1];
+            if (!filename || filename.indexOf("_MDM") !== -1) {
+              continue;
+            }
+            const ts = parseNexradFilenameToTimestamp(filename);
+            if (ts) {
+              parsed.push({
+                filename: filename,
+                timestamp: ts
+              });
+            }
+          }
+
+          if (parsed.length > 0) {
+            const wasAtLatest =
+              scanFrames.length === 0 || currentFrameIndex === scanFrames.length - 1;
+
+            // Keep only the newest MAX_LOOP_FRAMES scans; oldest scans drop out
+            scanFrames = parsed.slice(-MAX_LOOP_FRAMES);
+
+            if (preserveLatest || wasAtLatest || currentFrameIndex >= scanFrames.length) {
+              currentFrameIndex = scanFrames.length - 1;
+            }
+          } else {
+            const fallbackStamp = yyyy + mm + dd + "_" +
+              String(now.getUTCHours()).padStart(2, "0") +
+              String(now.getUTCMinutes()).padStart(2, "0") + "00";
+            scanFrames = [
+              {
+                filename: radarObj.id + fallbackStamp + "_V06",
+                timestamp: null
+              }
+            ];
+            currentFrameIndex = 0;
+          }
+
+          renderPlayerAndElevations();
+          updateRadarMapLayer();
+        })
+        .catch(function () {
+          const fallbackStamp = yyyy + mm + dd + "_" +
+            String(now.getUTCHours()).padStart(2, "0") +
+            String(now.getUTCMinutes()).padStart(2, "0") + "00";
+          scanFrames = [
+            {
+              filename: radarObj.id + fallbackStamp + "_V06",
+              timestamp: null
+            }
+          ];
+          currentFrameIndex = 0;
+          renderPlayerAndElevations();
+          updateRadarMapLayer();
+        });
+    }
+
+    function stopLoopPlayback() {
+      isPlaying = false;
+      if (playTimer) {
+        clearInterval(playTimer);
+        playTimer = null;
+      }
+      const playBtn = document.getElementById("btnPlayLoop");
+      if (playBtn) {
+        playBtn.classList.remove("playing");
+        playBtn.innerHTML = "&#9654;";
+      }
+    }
+
+    function startLoopPlayback() {
+      if (scanFrames.length <= 1) {
+        return;
+      }
+      isPlaying = true;
+      const playBtn = document.getElementById("btnPlayLoop");
+      if (playBtn) {
+        playBtn.classList.add("playing");
+        playBtn.innerHTML = "&#10074;&#10074;";
+      }
+      playTimer = setInterval(function () {
+        if (scanFrames.length === 0) {
+          return;
+        }
+        currentFrameIndex = (currentFrameIndex + 1) % scanFrames.length;
+        renderPlayerAndElevations();
+        updateRadarMapLayer();
+      }, 900);
     }
 
     function refreshMapSiteNames() {
@@ -798,7 +1108,7 @@
         }
       });
 
-      renderSidebarSiteAndLevel();
+      renderPlayerAndElevations();
     }
 
     function applyMapStyle(styleName) {
@@ -844,7 +1154,53 @@
       }
     }
 
-    renderSidebarSiteAndLevel();
+    renderPlayerAndElevations();
+
+    const btnPrevFrame = document.getElementById("btnPrevFrame");
+    const btnNextFrame = document.getElementById("btnNextFrame");
+    const btnPlayLoop = document.getElementById("btnPlayLoop");
+    const btnRefreshScans = document.getElementById("btnRefreshScans");
+
+    if (btnPrevFrame) {
+      btnPrevFrame.addEventListener("click", function () {
+        if (scanFrames.length === 0) {
+          return;
+        }
+        stopLoopPlayback();
+        currentFrameIndex = (currentFrameIndex - 1 + scanFrames.length) % scanFrames.length;
+        renderPlayerAndElevations();
+        updateRadarMapLayer();
+      });
+    }
+
+    if (btnNextFrame) {
+      btnNextFrame.addEventListener("click", function () {
+        if (scanFrames.length === 0) {
+          return;
+        }
+        stopLoopPlayback();
+        currentFrameIndex = (currentFrameIndex + 1) % scanFrames.length;
+        renderPlayerAndElevations();
+        updateRadarMapLayer();
+      });
+    }
+
+    if (btnPlayLoop) {
+      btnPlayLoop.addEventListener("click", function () {
+        if (isPlaying) {
+          stopLoopPlayback();
+        } else {
+          startLoopPlayback();
+        }
+      });
+    }
+
+    if (btnRefreshScans) {
+      btnRefreshScans.addEventListener("click", function () {
+        stopLoopPlayback();
+        fetchRecentScansForSite(true);
+      });
+    }
 
     const btnSiteNames = document.getElementById("btnSiteNames");
     if (btnSiteNames) {
@@ -909,7 +1265,7 @@
         });
         btn.classList.add("active");
         selectedProductKey = btn.getAttribute("data-prod") || "ref";
-        updateKTLXRadarOverlay();
+        updateRadarMapLayer();
       });
     });
 
@@ -940,8 +1296,10 @@
       }
       applyMapStyle(savedStyle);
 
-      updateKTLXRadarOverlay();
-      setInterval(updateKTLXRadarOverlay, 300000);
+      fetchRecentScansForSite(true);
+      setInterval(function () {
+        fetchRecentScansForSite(false);
+      }, 300000);
 
       OK_PRIMARY_RADARS.forEach(function (radar) {
         const labelIcon = L.divIcon({
@@ -957,8 +1315,12 @@
         });
 
         labelMarker.on("click", function () {
+          stopLoopPlayback();
           selectedRadarId = radar.id;
+          scanFrames = [];
+          currentFrameIndex = 0;
           refreshMapSiteNames();
+          fetchRecentScansForSite(true);
         });
 
         radarNameLayers[radar.id] = labelMarker;
