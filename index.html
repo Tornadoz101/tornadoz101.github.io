@@ -487,8 +487,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // Paste your CARTO API key here once it arrives in your email
-    const CARTO_API_KEY = "";
+    const CARTO_API_KEY = "cb1_5fjg_1_351c53d02c76f010f2762ee8";
 
     function applyThemeMode(themeName) {
       const isLight = themeName === "light";
@@ -706,13 +705,12 @@
 
       const cleanKey = CARTO_API_KEY.trim();
       const cartoUrl = cleanKey
-        ? "https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=" +
+        ? "https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=" +
           encodeURIComponent(cleanKey)
-        : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+        : "https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png";
 
       darkMinimalLayer = L.tileLayer(cartoUrl, {
         attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
-        subdomains: "abcd",
         maxZoom: 20
       });
 
