@@ -24,9 +24,6 @@
       --settings-hover: #ffffff;
       --popup-bg: #1e293b;
       --popup-text: #ffffff;
-      --site-unselected-bg: #475569;
-      --site-unselected-border: #64748b;
-      --site-unselected-text: #f1f5f9;
     }
 
     body.light-mode {
@@ -44,9 +41,6 @@
       --settings-hover: #374151;
       --popup-bg: #ffffff;
       --popup-text: #111111;
-      --site-unselected-bg: #e5e7eb;
-      --site-unselected-border: #9ca3af;
-      --site-unselected-text: #1f2937;
     }
 
     * {
@@ -118,96 +112,27 @@
       justify-content: space-between;
       padding: 8px 6px;
       min-height: 0;
-      overflow-y: auto;
     }
 
     .empty-slots {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      padding: 2px 4px;
-    }
-
-    .section-label {
-      font-size: 10px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-      color: var(--muted-text);
-      margin-bottom: 4px;
-    }
-
-    .radar-site-list {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 4px;
-    }
-
-    .radar-site-btn {
-      padding: 5px 6px;
-      border-radius: 4px;
-      border: 2px solid var(--site-unselected-border);
-      background-color: var(--site-unselected-bg);
-      color: var(--site-unselected-text);
-      font-size: 11px;
-      font-weight: 800;
-      cursor: pointer;
-      text-align: center;
-      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-    }
-
-    .radar-site-btn.selected {
-      background-color: #1d4ed8;
-      border-color: #1d4ed8;
-      color: #ffffff;
+      gap: 12px;
+      padding: 4px;
     }
 
     .radar-slot {
-      min-height: 28px;
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--panel-text);
-      line-height: 1.25;
+      min-height: 32px;
     }
 
     .angle-slot {
-      min-height: 44px;
-    }
-
-    .angle-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-    }
-
-    .angle-btn {
-      padding: 3px 6px;
-      font-size: 10px;
-      font-weight: 800;
-      border: 1.5px solid var(--input-border);
-      background-color: var(--btn-bg);
-      color: var(--btn-text);
-      cursor: pointer;
-    }
-
-    .angle-btn.active {
-      background-color: #1d4ed8;
-      border-color: #1d4ed8;
-      color: #ffffff;
-    }
-
-    .scan-meta {
-      margin-top: 6px;
-      font-size: 10px;
-      color: var(--muted-text);
-      line-height: 1.3;
+      min-height: 48px;
     }
 
     .product-buttons {
       display: flex;
       flex-direction: column;
       gap: 6px;
-      margin-top: 8px;
     }
 
     .prod-btn {
@@ -408,30 +333,20 @@
       background-color: #18181b;
     }
 
-    .radar-marker-icon {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background-color: #64748b;
-      border: 2px solid #ffffff;
-      box-shadow: 0 0 6px rgba(0, 0, 0, 0.7);
-    }
-
-    .radar-marker-icon.selected {
-      background-color: #3b82f6;
-      border-color: #ffffff;
-      transform: scale(1.2);
-    }
-
-    .leaflet-tooltip.radar-site-label {
-      background-color: rgba(15, 23, 42, 0.9);
-      color: #ffffff;
-      border: 1px solid #38bdf8;
-      border-radius: 3px;
-      padding: 1px 5px;
-      font-size: 10px;
+    .map-site-text {
+      display: inline-block;
+      color: #9ca3af;
+      font-size: 12px;
       font-weight: 800;
-      box-shadow: none;
+      letter-spacing: 0.5px;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .map-site-text.selected {
+      color: #3b82f6;
     }
 
     .popup-panel {
@@ -504,23 +419,13 @@
     <aside class="left-column">
       <div class="brand-box">
         <div class="brand-title">Tornadoz101’s Radar</div>
-        <div class="brand-version">Version 1.0</div>
+        <div class="brand-version">Version 1.1</div>
       </div>
 
       <div class="left-body">
         <div class="empty-slots">
-          <div>
-            <div class="section-label">OK Primary Radars</div>
-            <div class="radar-site-list" id="okRadarList"></div>
-          </div>
-
-          <div class="radar-slot" id="slot-radar-name">Select a radar site</div>
-
-          <div class="angle-slot" id="slot-site-angles">
-            <div class="section-label">Scan Angles</div>
-            <div class="angle-grid" id="angleGrid"></div>
-            <div class="scan-meta" id="scanMeta">Scan: -- | Status: Stand-by</div>
-          </div>
+          <div class="radar-slot" id="slot-radar-name"></div>
+          <div class="angle-slot" id="slot-site-angles"></div>
         </div>
 
         <div class="product-buttons">
@@ -543,7 +448,7 @@
     <div class="right-column">
       <header class="top-bar">
         <div class="pill-grid">
-          <button type="button" class="pill-btn" id="btnSiteNames">Site Names</button>
+          <button type="button" class="pill-btn active" id="btnSiteNames">Site Names</button>
           <button type="button" class="pill-btn" id="btnAllVersion">All Version</button>
           <button type="button" class="pill-btn" id="btnReports">Reports</button>
           <button type="button" class="pill-btn" id="btnOutlook">Outlook</button>
@@ -601,45 +506,15 @@
     const CARTO_API_KEY = "cb1_5fjg_1_351c53d02c76f010f2762ee8";
 
     const OK_PRIMARY_RADARS = [
-      {
-        id: "KTLX",
-        name: "Oklahoma City / Norman, OK",
-        lat: 35.3334,
-        lon: -97.2779,
-        wfo: "OUN",
-        angles: ["0.5°", "0.9°", "1.3°", "1.8°", "2.4°", "3.1°"]
-      },
-      {
-        id: "KVNX",
-        name: "Vance AFB / Enid, OK",
-        lat: 36.740617,
-        lon: -98.127717,
-        wfo: "OUN",
-        angles: ["0.5°", "0.9°", "1.3°", "1.8°", "2.4°", "3.1°"]
-      },
-      {
-        id: "KINX",
-        name: "Tulsa / Inola, OK",
-        lat: 36.1750,
-        lon: -95.5640,
-        wfo: "TSA",
-        angles: ["0.5°", "0.9°", "1.3°", "1.8°", "2.4°", "3.1°"]
-      },
-      {
-        id: "KFDR",
-        name: "Frederick, OK",
-        lat: 34.3622,
-        lon: -98.9766,
-        wfo: "OUN",
-        angles: ["0.5°", "0.9°", "1.3°", "1.8°", "2.4°", "3.1°"]
-      }
+      { id: "KTLX", name: "Oklahoma City / Norman, OK", lat: 35.3334, lon: -97.2779 },
+      { id: "KVNX", name: "Vance AFB / Enid, OK", lat: 36.740617, lon: -98.127717 },
+      { id: "KINX", name: "Tulsa / Inola, OK", lat: 36.1750, lon: -95.5640 },
+      { id: "KFDR", name: "Frederick, OK", lat: 34.3622, lon: -98.9766 }
     ];
 
     let selectedRadarId = null;
-    let selectedAngle = "0.5°";
-    let selectedProduct = "ref";
-    let siteNamesVisible = false;
-    const radarMarkers = {};
+    let siteNamesVisible = true;
+    const radarNameLayers = {};
 
     function applyThemeMode(themeName) {
       const isLight = themeName === "light";
@@ -753,112 +628,29 @@
       });
     }
 
-    function updateScanDetails(radarObj) {
-      const nameSlot = document.getElementById("slot-radar-name");
-      const angleGrid = document.getElementById("angleGrid");
-      const scanMeta = document.getElementById("scanMeta");
-
-      if (!radarObj) {
-        if (nameSlot) {
-          nameSlot.textContent = "Select a radar site";
-        }
-        if (angleGrid) {
-          angleGrid.innerHTML = "";
-        }
-        if (scanMeta) {
-          scanMeta.textContent = "Scan: -- | Status: Stand-by";
-        }
+    function refreshMapSiteNames() {
+      if (!map) {
         return;
       }
-
-      if (nameSlot) {
-        nameSlot.innerHTML =
-          "<strong>" + radarObj.id + "</strong> — " + radarObj.name +
-          "<br><span style='color:var(--muted-text);font-size:10px;'>WFO: " + radarObj.wfo + "</span>";
-      }
-
-      if (angleGrid) {
-        angleGrid.innerHTML = "";
-        radarObj.angles.forEach(function (ang) {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "angle-btn" + (ang === selectedAngle ? " active" : "");
-          btn.textContent = ang;
-          btn.addEventListener("click", function () {
-            selectedAngle = ang;
-            updateScanDetails(radarObj);
-          });
-          angleGrid.appendChild(btn);
-        });
-      }
-
-      if (scanMeta) {
-        scanMeta.textContent =
-          "Tilt: " + selectedAngle + " | Product: " + selectedProduct.toUpperCase();
-      }
-    }
-
-    function refreshRadarUI() {
-      const buttons = document.querySelectorAll(".radar-site-btn");
-      buttons.forEach(function (btn) {
-        const isSelected = btn.getAttribute("data-site") === selectedRadarId;
-        btn.classList.toggle("selected", isSelected);
-      });
-
-      Object.keys(radarMarkers).forEach(function (siteId) {
-        const marker = radarMarkers[siteId];
-        const isSelected = siteId === selectedRadarId;
-        const iconEl = marker.getElement();
-        if (iconEl) {
-          const dot = iconEl.querySelector(".radar-marker-icon");
-          if (dot) {
-            dot.classList.toggle("selected", isSelected);
-          }
-        }
-        if (siteNamesVisible) {
-          if (!marker.getTooltip()) {
-            marker.bindTooltip(siteId, {
-              permanent: true,
-              direction: "top",
-              offset: [0, -8],
-              className: "radar-site-label"
-            });
-          }
-          marker.openTooltip();
-        } else if (marker.getTooltip()) {
-          marker.unbindTooltip();
-        }
-      });
-
-      const activeObj = OK_PRIMARY_RADARS.find(function (r) {
-        return r.id === selectedRadarId;
-      }) || null;
-      updateScanDetails(activeObj);
-    }
-
-    function selectRadarSite(siteId) {
-      selectedRadarId = siteId;
-      refreshRadarUI();
-    }
-
-    function buildRadarButtons() {
-      const container = document.getElementById("okRadarList");
-      if (!container) {
-        return;
-      }
-      container.innerHTML = "";
 
       OK_PRIMARY_RADARS.forEach(function (radar) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "radar-site-btn";
-        btn.setAttribute("data-site", radar.id);
-        btn.textContent = radar.id;
-        btn.title = radar.name;
-        btn.addEventListener("click", function () {
-          selectRadarSite(radar.id);
-        });
-        container.appendChild(btn);
+        const layer = radarNameLayers[radar.id];
+        if (!layer) {
+          return;
+        }
+
+        if (siteNamesVisible) {
+          if (!map.hasLayer(layer)) {
+            layer.addTo(map);
+          }
+          const el = layer.getElement();
+          const textSpan = el ? el.querySelector(".map-site-text") : null;
+          if (textSpan) {
+            textSpan.classList.toggle("selected", selectedRadarId === radar.id);
+          }
+        } else if (map.hasLayer(layer)) {
+          map.removeLayer(layer);
+        }
       });
     }
 
@@ -905,14 +697,12 @@
       }
     }
 
-    buildRadarButtons();
-
     const btnSiteNames = document.getElementById("btnSiteNames");
     if (btnSiteNames) {
       btnSiteNames.addEventListener("click", function () {
         siteNamesVisible = !siteNamesVisible;
         btnSiteNames.classList.toggle("active", siteNamesVisible);
-        refreshRadarUI();
+        refreshMapSiteNames();
       });
     }
 
@@ -969,11 +759,6 @@
           b.classList.remove("active");
         });
         btn.classList.add("active");
-        selectedProduct = btn.getAttribute("data-prod") || "ref";
-        const activeObj = OK_PRIMARY_RADARS.find(function (r) {
-          return r.id === selectedRadarId;
-        }) || null;
-        updateScanDetails(activeObj);
       });
     });
 
@@ -1005,29 +790,27 @@
       applyMapStyle(savedStyle);
 
       OK_PRIMARY_RADARS.forEach(function (radar) {
-        const divIcon = L.divIcon({
+        const labelIcon = L.divIcon({
           className: "",
-          html: '<div class="radar-marker-icon"></div>',
-          iconSize: [14, 14],
-          iconAnchor: [7, 7]
+          html: '<span class="map-site-text">' + radar.id + "</span>",
+          iconSize: [44, 18],
+          iconAnchor: [22, 9]
         });
 
-        const marker = L.marker([radar.lat, radar.lon], { icon: divIcon })
-          .addTo(map)
-          .bindPopup(
-            "<strong>" + radar.id + "</strong><br>" +
-            radar.name + "<br>" +
-            "Coords: " + radar.lat.toFixed(3) + ", " + radar.lon.toFixed(3)
-          );
-
-        marker.on("click", function () {
-          selectRadarSite(radar.id);
+        const labelMarker = L.marker([radar.lat, radar.lon], {
+          icon: labelIcon,
+          interactive: true
         });
 
-        radarMarkers[radar.id] = marker;
+        labelMarker.on("click", function () {
+          selectedRadarId = radar.id;
+          refreshMapSiteNames();
+        });
+
+        radarNameLayers[radar.id] = labelMarker;
       });
 
-      refreshRadarUI();
+      refreshMapSiteNames();
 
       const styleDarkBtn = document.getElementById("styleDarkMinimal");
       const styleOSMBtn = document.getElementById("styleDetailedOSM");
